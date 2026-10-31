@@ -462,9 +462,9 @@ export function init() {
   });
   // Pop-out turned on or off: the ring's state bits are worked out again (configureVisuals).
   Hooks.on("updateToken", (doc, changed) => {
-    if (touchesArtZoom(changed)) return doc.object?.renderFlags.set({ refreshSize: true }); // ring configureSize applies the zoom
-    if (!touchesPopOut(changed)) return; // not the pop-out flag: nothing to do (this hook fires on every token update)
-    refreshRing(doc.object);
+    // One update can touch both (Remove deletes the whole namespace), so neither check returns early for the other.
+    if (touchesArtZoom(changed)) doc.object?.renderFlags.set({ refreshSize: true }); // ring configureSize applies the zoom
+    if (touchesPopOut(changed)) refreshRing(doc.object); // only for the pop-out flag (this hook fires on every token update)
   });
   // Ring effect on targeted tokens: client-side only, no document writes. Not registered at all while the setting is off.
   const te = targetEffect();

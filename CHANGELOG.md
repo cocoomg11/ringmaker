@@ -2,6 +2,10 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## Unreleased
+
+- **Fixed: a token kept drawing its art outside the ring after pop-out was turned off** when the same update also changed its art framing (for example **Remove Ringmaker's ring**, which deletes all of Ringmaker's flags at once). The token now redraws for both changes; before, it needed a scene reload.
+
 ## 1.4.0
 
 Art framing per token (zoom and a focus point, with live preview), ring effects that actually show, and Remove that tracks every token.
