@@ -210,3 +210,65 @@ test("ring class: core statics that use private fields work on Ringmaker's subcl
   assert.equal(r.effects, 1 | R.POPOUT_STATE, "pop-out bit still added");
   assert.deepEqual(R.forwardPrivateStatics(class extends FakeRing { }, FakeRing).sort(), ["createAssetsUVs", "getRingDataBySize"]);
 });
+
+test("Remove plan (cleanUpdate): restores the ring and deletes every Ringmaker flag", () => {
+  const rec = { enabled: false, scale: 1, applied: 0.85 };
+  const both = { ring: { enabled: true, subject: { scale: 0.85 } }, flags: { [ID]: { prior: rec, popOut: true } } };
+  assert.deepEqual(R.cleanUpdate(both), { "ring.enabled": false, "ring.subject.scale": 1, [`flags.${ID}`]: null }, "prior restored, prior and popOut both go");
+  const popOnly = { ring: { enabled: true }, flags: { [ID]: { popOut: true } } };
+  assert.deepEqual(R.cleanUpdate(popOnly), { [`flags.${ID}`]: null }, "ring you turned on yourself is kept; only the flag goes");
+  assert.deepEqual(R.cleanUpdate(popOnly, { prefix: "prototypeToken." }), { [`prototypeToken.flags.${ID}`]: null });
+  assert.equal(R.cleanUpdate(tok(true)), null, "nothing of Ringmaker's: left alone");
+  assert.equal(R.cleanUpdate({ flags: { [ID]: {} } }), null, "empty namespace: nothing to do");
+  assert.equal(R.cleanUpdate(null), null);
+  const DEL = Symbol("del");
+  assert.equal(R.foundryDeletes([R.cleanUpdate(both)], DEL)[0][`flags.${ID}`], DEL, "v14 deletion operator");
+  assert.deepEqual(R.foundryDeletes([R.cleanUpdate(popOnly, { prefix: "prototypeToken." })], undefined)[0], { [`prototypeToken.flags.-=${ID}`]: null }, "older '-=' key");
+  const keep = R.foundryDeletes([{ "flags.other.x": null }], DEL)[0];
+  assert.equal(keep["flags.other.x"], null, "other modules' keys untouched");
+});
+
+test("updateToken bail-out: only pop-out changes count", () => {
+  assert.equal(R.touchesPopOut({ x: 1 }), false);
+  assert.equal(R.touchesPopOut({ flags: { other: { a: 1 } } }), false);
+  assert.equal(R.touchesPopOut({ flags: { [ID]: { prior: {} } } }), false, "prior alone doesn't change visuals");
+  assert.equal(R.touchesPopOut({ flags: { [ID]: { popOut: true } } }), true);
+  assert.equal(R.touchesPopOut({ flags: { [ID]: { "-=popOut": null } } }), true);
+  assert.equal(R.touchesPopOut({ flags: { [`-=${ID}`]: null } }), true, "namespace removed by Remove");
+  assert.equal(R.touchesPopOut({ flags: { [ID]: Symbol("del") } }), true, "v14 deletion operator");
+  assert.equal(R.touchesPopOut(null), false);
+});
+
+test("target effect: core bits, combined with pop-out, nothing for off/flash", () => {
+  assert.deepEqual(Object.keys(R.TARGET_EFFECTS), ["off", "pulse", "gradient", "flash"]);
+  assert.equal(R.targetBit("pulse"), 0x02); assert.equal(R.targetBit("gradient"), 0x04);
+  assert.equal(R.targetBit("pulse", { RING_PULSE: 2, RING_GRADIENT: 4, ENABLED: 1 }), 2, "read from core's enum");
+  assert.equal(R.targetBit("off"), 0); assert.equal(R.targetBit("flash"), 0); assert.equal(R.targetBit("nope"), 0);
+  assert.equal(R.ringEffects(1, { target: 2 }), 3);
+  assert.equal(R.ringEffects(1, { popOut: true, target: 4 }), 0x45);
+  assert.equal(R.ringEffects(0x43, {}), 0x03, "pop-out bit cleared when off; core's bits kept");
+});
+
+test("ring class: target effect bit while targeted, not otherwise", () => {
+  class FakeRing { static effects = { ENABLED: 1 }; configureVisuals() { this.effects = 1; } }
+  const Sub = R.popOutRingClass(FakeRing, { target: 2 });
+  const r = new Sub(); r.token = { document: { flags: {} }, targeted: new Set(["u"]) }; r.configureVisuals();
+  assert.equal(r.effects, 3);
+  r.token.targeted.clear(); r.configureVisuals(); assert.equal(r.effects, 1, "core resets, no bit when untargeted");
+  const Off = R.popOutRingClass(FakeRing);
+  const o = new Off(); o.token = { document: { flags: {} }, targeted: new Set(["u"]) }; o.configureVisuals();
+  assert.equal(o.effects, 1, "setting off: nothing added");
+});
+
+test("menu preview layout follows the ring texture maths", () => {
+  const band = { outer: 1, inner: 0.84 };
+  const p = R.previewLayout({ band, size: 100, px: 200 });
+  const L = R.ringLayout(band, 100);
+  assert.equal(p.ring, Math.round(200 * L.scale * 10) / 10);
+  assert.equal(p.bkg, Math.round(200 * L.bkgR * 10) / 10);
+  assert.ok(p.bkg < p.ring, "background sits inside the ring");
+  assert.equal(p.ringOnTop, true); assert.equal(R.previewLayout({ band, front: false }).ringOnTop, false);
+  assert.ok(R.previewLayout({ band, size: 125 }).ring > R.previewLayout({ band, size: 50 }).ring);
+  assert.equal(R.previewLayout({ band, size: 999 }).ring, R.previewLayout({ band, size: 125 }).ring, "size clamped");
+  assert.equal(R.previewLayout({ band, scale: 0.5 }).art, Math.round(200 * R.CORE.subject * 0.5 * 10) / 10);
+});

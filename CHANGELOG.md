@@ -2,9 +2,25 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
-## Unreleased
+## 1.3.0
 
-- No behaviour change. The release workflow now stops early if the release tag isn't `vMAJOR.MINOR.PATCH`. The token-update hook returns immediately for updates that don't touch Ringmaker's flags, and the pop-out ring class skips a redundant write. README now documents the flags Ringmaker writes, how to remove them, and the API's stability.
+Remove cleans up fully, a live preview in the Ringmaker window, and an optional ring effect on targeted tokens.
+
+- **Remove now cleans up everything.** *Remove Ringmaker's ring* still puts back each token's ring as it was, and now also deletes the pop-out choice (`flags.ringmaker.popOut`) and anything else Ringmaker stored on tokens and actor prototype tokens. Tokens whose ring you turned on yourself keep their ring; only Ringmaker's data on them goes. The confirm box says how many tokens will change.
+- **Live preview in Open Ringmaker** (GM). A sample token picture with your ring image over it, redrawn as you move *Ring size*, pick a *Background colour* or tick *Ring in front of token art* in that window, before anything is saved. **Save and reload** stores the three settings and asks to reload Foundry. The preview uses the same layout maths as the ring itself, so sizes match; it doesn't show a token's own background colour, ring effects or the shader's soft edges.
+- **Ring effect on targeted tokens** (new setting, off by default). While a token with Ringmaker's ring is targeted, Foundry's own ring effect is used on it: *Pulse* or *Gradient* while it stays targeted, or *Flash once* in the targeting player's colour. Each client draws it for itself; nothing is saved to the world. With the setting off, nothing is registered. Changing it reloads Foundry.
+- API: new `removePlan()` (experimental): what Remove would change, as counts.
+- The token-update hook now returns at once for any update that doesn't touch the pop-out flag.
+- **Not added: a different ring image per actor.** Foundry's v14 ring API has one ring texture for every token (one spritesheet per ring style); a per-actor image would mean changing undocumented parts of Foundry's ring class. Left out rather than shipped fragile.
+- Also in this release (no behaviour change): the release workflow stops early if the release tag isn't `vMAJOR.MINOR.PATCH`. The pop-out ring class skips a redundant write. README documents the flags Ringmaker writes, how to remove them, and the API's stability.
+
+### Not yet tested live
+
+- Remove on a world with pop-out tokens: `flags.ringmaker` is gone afterwards (placed and prototype tokens), the ring comes back as recorded, and pop-out tokens redraw without the pop-out (v14 deletion operator and v13 `-=` key).
+- The preview in Open Ringmaker: ring image, background disc and sample art line up with a real ringed token at 50 %, 100 % and 125 %; ring in front on and off; Save and reload stores the settings and offers the reload.
+- Ring effect on targeted tokens, each of Pulse, Gradient and Flash: shows for the targeting player and for other clients, stops on untarget (Pulse/Gradient), only for tokens with the ring, and works together with pop-out tokens. That `Token#targeted` is already updated when the `targetToken` hook fires, and that the hook fires on other clients.
+- No console errors on canvas draw with the setting on and off (the ring class is still the 1.2.2 subclass with the private-static forwards).
+
 
 ## 1.2.2
 

@@ -1,6 +1,6 @@
 /**
  * Ringmaker entry point: settings, the settings menu, the API and the hooks.
- * API: game.modules.get("ringmaker").api = { applyAll({ npcOnly }), remove(), plan({ npcOnly }), status(), setPopOut(tokens, on) }.
+ * API: game.modules.get("ringmaker").api = { applyAll({ npcOnly }), remove(), removePlan(), plan({ npcOnly }), status(), setPopOut(tokens, on) }.
  * applyAll and remove are active GM only; setPopOut is GM only.
  */
 import * as Ring from "./ring.mjs";
@@ -9,6 +9,7 @@ import { RingmakerMenu } from "./menu.mjs";
 export const API = {
   applyAll: (opts = {}) => Ring.applyAll(opts),
   remove: () => Ring.remove(),
+  removePlan: () => Ring.removePlan(),
   plan: (opts = {}) => { const p = Ring.plan(opts); return { actors: p.actors.length, tokens: p.tokens }; },
   status: () => Ring.status(),
   setPopOut: (tokens, on = true) => Ring.setPopOut(tokens, on)

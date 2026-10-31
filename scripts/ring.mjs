@@ -39,6 +39,10 @@ export const POPOUT = "popOut";
 /** Ring state bit for pop-out tokens, above core's TokenRing effects (0x01 – 0x20). */
 export const POPOUT_STATE = 0x40;
 export const TARGETS = { npc: "NPCs only", all: "Every token (player characters too)" };
+/** Ring effect on targeted tokens (setting targetEffect). Pulse and gradient are core TokenRing effects; flash is TokenRing#flashColor. */
+export const TARGET_EFFECTS = { off: "Off", pulse: "Pulse", gradient: "Gradient", flash: "Flash once (in the targeting player's colour)" };
+/** Core's TokenRing.effects values (v14), used when the live enum isn't there. */
+export const CORE_EFFECTS = { RING_PULSE: 0x02, RING_GRADIENT: 0x04 };
 const BATCH = 100;
 
 // ---------------------------------------------------------------- pure helpers
@@ -178,6 +182,58 @@ export function configSource(app) {
   return null;
 }
 
+/** The ring effect bit for a targetEffect choice (pulse or gradient), from core's effects enum; 0 for off, flash or unknown. */
+export function targetBit(choice, effects = CORE_EFFECTS) {
+  const e = effects ?? CORE_EFFECTS;
+  if (choice === "pulse") return Number(e.RING_PULSE ?? CORE_EFFECTS.RING_PULSE) >>> 0;
+  if (choice === "gradient") return Number(e.RING_GRADIENT ?? CORE_EFFECTS.RING_GRADIENT) >>> 0;
+  return 0;
+}
+
+/** A ring's effects with Ringmaker's additions: the pop-out bit set or cleared, and the target effect bit when targeted. */
+export function ringEffects(effects, { popOut = false, target = 0 } = {}) {
+  let e = popOutEffects(effects, popOut);
+  if (target) e = (e | target) >>> 0;
+  return e;
+}
+
+/**
+ * Whether a token update touches the pop-out flag (set, cleared, or the whole flags.ringmaker removed). Cheap: it looks only at the
+ * changed flags, because updateToken fires on every token update.
+ */
+export function touchesPopOut(changed) {
+  const f = changed?.flags; if (!f || typeof f !== "object") return false;
+  if (`-=${ID}` in f) return true;
+  if (!(ID in f)) return false;
+  const v = f[ID];
+  if (!v || typeof v !== "object" || Object.getPrototypeOf(v) !== Object.prototype || !Object.keys(v).length) return true; // namespace deleted
+  return POPOUT in v || `-=${POPOUT}` in v;
+}
+
+/**
+ * Remove's update for one token (or prototype token) source: the recorded ring values come back (as ringRevert) and every
+ * Ringmaker flag (prior, popOut, anything else under flags.ringmaker) is deleted. null when there is nothing of Ringmaker's.
+ */
+export function cleanUpdate(src, { prefix = "" } = {}) {
+  const f = src?.flags?.[ID];
+  const has = !!f && typeof f === "object" && Object.keys(f).length > 0;
+  if (!has) return null;
+  const out = ringRevert(src, { prefix }) ?? {};
+  delete out[`${prefix}flags.${ID}.${FLAG}`];
+  out[`${prefix}flags.${ID}`] = null;
+  return out;
+}
+
+/**
+ * Sizes for the menu's live preview (CSS pixels, a px × px square standing for one ring frame): the ring image's drawn size,
+ * the background disc's diameter, the sample art's size and the drawing order. Same layout maths as the ring texture.
+ */
+export function previewLayout({ band = null, size = 100, scale = 1, front = true, px = 200 } = {}) {
+  const L = ringLayout(band, size);
+  const r = v => Math.round(v * 10) / 10;
+  return { px, ring: r(px * L.scale), bkg: r(px * L.bkgR), art: r(px * CORE.subject * clampScale(scale)), front: !!front, ringOnTop: !!front, clipArt: !!front };
+}
+
 /** Ring effects with the pop-out state bit set or cleared. */
 export function popOutEffects(effects, on) {
   const e = Number(effects) >>> 0;
@@ -199,12 +255,16 @@ export function fitRect(w, h, size = FRAME) {
 /** Splits a list into batches. */
 export const chunks = (arr, n = BATCH) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
 
-/** Turns the record flag's null (remove it) into the deletion Foundry wants: v14's deletion operator, or the older "-=" key. */
+/**
+ * Turns a null for Ringmaker's flags (flags.ringmaker, or flags.ringmaker.prior) into the deletion Foundry wants: v14's deletion
+ * operator, or the older "-=" key on the last part.
+ */
 export function foundryDeletes(list, del = globalThis._del) {
-  const tail = `flags.${ID}.${FLAG}`;
+  const tails = [`flags.${ID}.${FLAG}`, `flags.${ID}`];
   for (const u of list) for (const k of Object.keys(u)) {
-    if (!k.endsWith(tail) || u[k] !== null) continue;
-    delete u[k]; if (del) u[k] = del; else u[k.replace(new RegExp(`${FLAG}$`), `-=${FLAG}`)] = null;
+    if (u[k] !== null || !tails.some(t => k === t || k.endsWith(`.${t}`))) continue;
+    delete u[k];
+    if (del) u[k] = del; else { const i = k.lastIndexOf("."); u[`${k.slice(0, i)}.-=${k.slice(i + 1)}`] = null; }
   }
   return list;
 }
@@ -217,6 +277,7 @@ const scale = () => clampScale(S("artScale"));
 const size = () => clampSize(S("ringSize"));
 const bg = () => cssColor(S("background"));
 const front = () => S("ringInFront") !== false;
+const targetEffect = () => { const v = S("targetEffect"); return v in TARGET_EFFECTS ? v : "off"; };
 const actorOf = t => t.actor ?? game.actors.get(t.actorId) ?? null;
 let texture = null; let loadError = null; let hooked = false; let band = null; let shaderPatched = false;
 
@@ -229,6 +290,7 @@ export function registerSettings() {
   s("background", "Background colour", "The colour behind the token art, inside the ring. A token's own ring background colour (Token configuration) is used instead when it has one. Reloads Foundry.", new foundry.data.fields.ColorField({ required: true, nullable: false, blank: false, initial: DEFAULT_BG }), DEFAULT_BG, { requiresReload: true });
   s("ringInFront", "Ring in front of token art", "Draw the ring over the token art and trim the art to the ring's opening. Turn off for Foundry's own order (art over the ring, so cut-out art can reach past it). Reloads Foundry.", Boolean, true, { requiresReload: true });
   s("artScale", "Token art size inside the ring", "Foundry's ring subject scale, set on the tokens Ringmaker rings. 1 (Foundry's default) keeps the ring at its normal size; below 1 the ring grows around the art, above 1 it shrinks. A scale you set on a token yourself is kept.", Number, 1, { range: { min: 0.5, max: 1.5, step: 0.01 } });
+  s("targetEffect", "Ring effect on targeted tokens", "While a token with the ring is targeted, use one of Foundry's own ring effects on it: Pulse or Gradient while it stays targeted, or a single Flash in the targeting player's colour. Drawn on each client only; nothing is saved. Off by default. Reloads Foundry.", String, "off", { choices: TARGET_EFFECTS, requiresReload: true });
   s("existingOnLoad", "Ring existing tokens on load", "Each time the world loads, the active GM puts the ring on any token (and actor prototype token) that should have it and doesn't yet.", Boolean, false);
 }
 
@@ -239,7 +301,8 @@ export function init() {
   Hooks.on("initializeDynamicTokenRingConfig", cfg => {
     const D = foundry.canvas?.placeables?.tokens?.DynamicRingData;
     if (!D) return console.warn(`${ID} | dynamic token rings not available`);
-    const shaderClass = ringShader(); const ringClass = popOutRingClass();
+    const te = targetEffect(); const target = targetBit(te, foundry.canvas.placeables.tokens.TokenRing?.effects);
+    const shaderClass = ringShader(); const ringClass = popOutRingClass(undefined, { target });
     const framework = { ...(shaderClass ? { shaderClass } : {}), ...(ringClass ? { ringClass } : {}) };
     cfg.addConfig(RING_ID, new D({ id: RING_ID, label: "Ringmaker", spritesheet: SHEET, ...(Object.keys(framework).length ? { framework } : {}) }));
   });
@@ -263,15 +326,28 @@ export function init() {
   });
   // Pop-out turned on or off: the ring's state bits are worked out again (configureVisuals).
   Hooks.on("updateToken", (doc, changed) => {
-    if (!changed?.flags?.[ID] && !changed?.flags?.[`-=${ID}`]) return; // not our flags: nothing to do (this hook fires on every token update)
-    if (!foundry.utils.hasProperty(changed, `flags.${ID}.${POPOUT}`) && !foundry.utils.hasProperty(changed, `flags.${ID}.-=${POPOUT}`)) return;
-    const t = doc.object; if (t?.hasDynamicRing) { t.ring.configureVisuals(); t.renderFlags.set({ refreshRingVisuals: true }); }
+    if (!touchesPopOut(changed)) return; // not the pop-out flag: nothing to do (this hook fires on every token update)
+    refreshRing(doc.object);
+  });
+  // Ring effect on targeted tokens: client-side only, no document writes. Not registered at all while the setting is off.
+  const te = targetEffect();
+  if (te !== "off") Hooks.on("targetToken", (user, token, targeted) => {
+    if (!token?.hasDynamicRing || CONFIG.Token.ring.id !== RING_ID) return; // no ring, or not Ringmaker's ring style
+    if (te !== "flash") return refreshRing(token); // the ring class adds the effect bit while the token is targeted
+    if (!targeted || typeof token.ring?.flashColor !== "function") return;
+    try { token.ring.flashColor(foundry.utils.Color.from(user?.color ?? "#ffffff"))?.catch?.(() => { }); } catch { }
   });
   Hooks.on("preCreateToken", (doc, data, options, userId) => {
     if (userId !== game.user.id || !S("newTokens")) return;
     if (!wants(actorOf(doc), mode())) return;
     const u = ringUpdate(doc._source, { scale: scale() }); if (u) doc.updateSource(foundry.utils.expandObject(u));
   });
+}
+
+/** The ring's state bits are worked out again (configureVisuals) and its visuals redrawn. */
+function refreshRing(t) {
+  if (!t?.hasDynamicRing || !t.ring) return;
+  t.ring.configureVisuals(); t.renderFlags.set({ refreshRingVisuals: true });
 }
 
 const coreShader = () => foundry.canvas.rendering?.shaders?.TokenRingSamplerShader ?? null;
@@ -307,13 +383,17 @@ export function forwardPrivateStatics(Sub, Base) {
   return names;
 }
 
-/** Core's TokenRing with the pop-out state bit added for tokens that have it on. null when core's class isn't there. */
-export function popOutRingClass(Core = foundry.canvas?.placeables?.tokens?.TokenRing) {
+/**
+ * Core's TokenRing with the pop-out state bit added for tokens that have it on, and (target > 0) the target effect bit while the
+ * token is targeted by anyone. null when core's class isn't there.
+ */
+export function popOutRingClass(Core = globalThis.foundry?.canvas?.placeables?.tokens?.TokenRing, { target = 0 } = {}) {
   if (!Core) return null;
   const Sub = class RingmakerTokenRing extends Core {
     configureVisuals() {
       super.configureVisuals(); // runs when a ring is set up or its visuals change, not per frame
-      const e = popOutEffects(this.effects, isPopOut(this.token?.document));
+      const t = this.token;
+      const e = ringEffects(this.effects, { popOut: isPopOut(t?.document), target: target && t?.targeted?.size ? target : 0 });
       if (e !== this.effects) this.effects = e;
     }
   };
@@ -384,14 +464,14 @@ export function plan({ npcOnly = mode() === "npc", revert = false } = {}) {
   const actors = []; const scenes = [];
   for (const a of game.actors) {
     if (!revert && !wants(a, m)) continue;
-    const u = revert ? ringRevert(a._source.prototypeToken, { prefix: "prototypeToken." }) : ringUpdate(a._source.prototypeToken, { scale: sc, prefix: "prototypeToken." });
+    const u = revert ? cleanUpdate(a._source.prototypeToken, { prefix: "prototypeToken." }) : ringUpdate(a._source.prototypeToken, { scale: sc, prefix: "prototypeToken." });
     if (u) actors.push({ _id: a.id, ...u });
   }
   for (const s of game.scenes) {
     const ups = [];
     for (const t of s.tokens) {
       if (!revert && !wants(actorOf(t), m)) continue;
-      const u = revert ? ringRevert(t._source) : ringUpdate(t._source, { scale: sc });
+      const u = revert ? cleanUpdate(t._source) : ringUpdate(t._source, { scale: sc });
       if (u) ups.push({ _id: t.id, ...u });
     }
     if (ups.length) scenes.push([s, ups]);
@@ -421,15 +501,33 @@ export async function applyAll({ npcOnly = mode() === "npc", quiet = false } = {
   return run(plan({ npcOnly }), "put on", quiet);
 }
 
-/** Active GM: undoes what Ringmaker changed (ring on/off and its scale), on prototype tokens and placed tokens alike. */
+/**
+ * Active GM: undoes what Ringmaker changed (ring on/off and its scale) and deletes every Ringmaker flag (prior, popOut), on
+ * prototype tokens and placed tokens alike.
+ */
 export async function remove() {
   if (!gmCheck()) return null;
   return run(plan({ revert: true }), "taken off", false);
 }
 
+/** What Remove would change, as counts, without changing anything. */
+export function removePlan() {
+  const p = plan({ revert: true }); return { actors: p.actors.length, tokens: p.tokens };
+}
+
+/** Saves the ring look settings from the menu (only the ones that changed). Returns whether anything changed. GM only. */
+export async function saveLook({ ringSize, background, ringInFront } = {}) {
+  if (!game.user.isGM) return false;
+  const next = { ringSize: clampSize(ringSize), background: cssColor(background), ringInFront: !!ringInFront };
+  const cur = { ringSize: size(), background: bg(), ringInFront: front() };
+  let changed = false;
+  for (const k of Object.keys(next)) if (next[k] !== cur[k]) { await game.settings.set(ID, k, next[k]); changed = true; }
+  return changed;
+}
+
 /** What's set and whether the ring is in use. */
 export function status() {
-  const st = { image: image(), mode: mode(), scale: scale(), size: size(), background: bg(), front: front(), shader: shaderPatched, band, registered: false, active: null, error: loadError };
+  const st = { image: image(), mode: mode(), scale: scale(), size: size(), background: bg(), front: front(), targetEffect: targetEffect(), shader: shaderPatched, band, registered: false, active: null, error: loadError };
   try { st.registered = CONFIG.Token.ring.configIDs.includes(RING_ID); st.active = CONFIG.Token.ring.id === RING_ID; } catch { }
   return st;
 }
