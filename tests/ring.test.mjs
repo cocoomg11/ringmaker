@@ -188,3 +188,25 @@ test("configSource: finds the token data for placed tokens, prototype tokens and
   assert.equal(R.configSource({}), null);
   assert.equal(R.isPopOut(R.configSource({ document: { flags: { [ID]: { popOut: true } } } })), true, "live document without _source");
 });
+
+test("ring class: core statics that use private fields work on Ringmaker's subclass (createAssetsUVs regression)", () => {
+  // Like core's TokenRing: a static method writes a static private field through `this`.
+  class FakeRing {
+    static #ringData = [];
+    static createAssetsUVs() { this.#ringData = ["ring"]; this.baseTexture = "tex"; }
+    static getRingDataBySize() { return this.#ringData[0]; }
+    static effects = { ENABLED: 1 };
+    configureVisuals() { this.effects = 1; }
+  }
+  class Plain extends FakeRing { }
+  assert.throws(() => Plain.createAssetsUVs(), TypeError, "a plain subclass fails the way core's does");
+  const Sub = R.popOutRingClass(FakeRing);
+  assert.equal(Object.getPrototypeOf(Sub), FakeRing, "still a real subclass");
+  assert.doesNotThrow(() => Sub.createAssetsUVs());
+  assert.equal(Sub.getRingDataBySize(1), "ring");
+  assert.equal(Sub.baseTexture, "tex", "static data set on the base is inherited");
+  assert.equal(Sub.effects.ENABLED, 1);
+  const r = new Sub(); r.token = { document: { flags: { [ID]: { popOut: true } } } }; r.configureVisuals();
+  assert.equal(r.effects, 1 | R.POPOUT_STATE, "pop-out bit still added");
+  assert.deepEqual(R.forwardPrivateStatics(class extends FakeRing { }, FakeRing).sort(), ["createAssetsUVs", "getRingDataBySize"]);
+});

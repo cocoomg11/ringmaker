@@ -285,15 +285,40 @@ function ringShader() {
   };
 }
 
+/**
+ * Core's static methods that use static private fields (e.g. TokenRing.createAssetsUVs writes `this.#ringData`) throw when
+ * called on a subclass, because `this` is then the subclass, which doesn't have the field. Core calls them as
+ * `CONFIG.Token.ring.ringClass.createAssetsUVs()`, so on the subclass they're replaced by forwards that run them on the base
+ * class. Static data they set (baseTexture, texturesData) lives on the base class and is inherited by the subclass.
+ * Returns the names forwarded.
+ */
+export function forwardPrivateStatics(Sub, Base) {
+  const names = [];
+  for (const n of Object.getOwnPropertyNames(Base)) {
+    const d = Object.getOwnPropertyDescriptor(Base, n);
+    if (typeof d?.value !== "function" || Object.hasOwn(Sub, n)) continue;
+    let src = ""; try { src = Function.prototype.toString.call(d.value); } catch { }
+    if (!/\bthis\s*\.\s*#/.test(src)) continue;
+    const f = d.value;
+    Object.defineProperty(Sub, n, { value: function (...args) { return f.apply(Base, args); }, writable: true, configurable: true });
+    names.push(n);
+  }
+  return names;
+}
+
 /** Core's TokenRing with the pop-out state bit added for tokens that have it on. null when core's class isn't there. */
-function popOutRingClass() {
-  const Core = foundry.canvas?.placeables?.tokens?.TokenRing; if (!Core) return null;
-  return class RingmakerTokenRing extends Core {
+export function popOutRingClass(Core = foundry.canvas?.placeables?.tokens?.TokenRing) {
+  if (!Core) return null;
+  const Sub = class RingmakerTokenRing extends Core {
     configureVisuals() {
       super.configureVisuals();
       this.effects = popOutEffects(this.effects, isPopOut(this.token?.document));
     }
   };
+  try { forwardPrivateStatics(Sub, Core); } catch (e) {
+    console.warn(`${ID} | couldn't adapt the token ring class; pop-out is off`, e); return null;
+  }
+  return Sub;
 }
 
 /** The checkbox for pop-out, added to the Dynamic Token Ring section of the token configuration (prototype tokens too). */
