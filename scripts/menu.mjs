@@ -23,7 +23,8 @@ export class RingmakerMenu extends foundry.applications.api.ApplicationV2 {
     const line = !st.image
       ? `<p><strong>No ring image chosen.</strong> Pick one in the module settings (Ring image); until then Ringmaker leaves Foundry's ring alone.</p>`
       : `<p>Ring image: <code>${esc(st.image)}</code>${st.error ? `<br><strong>Couldn't load it:</strong> ${esc(st.error)}` : ""}</p>
-         <p>Targets: ${esc(Ring.TARGETS[st.mode])} · art size ${st.scale}${st.active === false ? " · <strong>not the active ring style</strong> (reload Foundry)" : ""}</p>
+         <p>Targets: ${esc(Ring.TARGETS[st.mode])} · ring size ${st.size}% · art size ${st.scale} · background <span style="display:inline-block; width:0.9em; height:0.9em; vertical-align:middle; border:1px solid #888; background:${esc(st.background)}"></span> ${esc(st.background)}${st.front ? " · ring in front" : ""}${st.active === false ? " · <strong>not the active ring style</strong> (reload Foundry)" : ""}</p>
+         ${st.band ? `<p class="hint">Ring band found at ${Math.round(st.band.inner * 100)}–${Math.round(st.band.outer * 100)}% of the image's radius.</p>` : ""}
          <p>${p.count ? `Still to ring: ${plural(p.actors.length, "actor prototype token")} and ${plural(p.tokens, "placed token")}.` : "Every matching token already has the ring."}</p>`;
     const gm = game.user.isGM ? "" : "disabled";
     return `<section style="padding: 0.5rem 0.75rem">${line}
@@ -31,7 +32,7 @@ export class RingmakerMenu extends foundry.applications.api.ApplicationV2 {
         <button type="button" data-action="apply" ${st.image ? gm : "disabled"}><i class="fa-solid fa-circle-notch"></i> Apply ring to existing tokens</button>
         <button type="button" data-action="remove" ${gm}><i class="fa-solid fa-eraser"></i> Remove Ringmaker's ring</button>
       </div>
-      <p class="hint" style="margin-top:0.5rem">Apply turns the ring on for the prototype tokens of matching actors and every matching token on every scene. Remove puts back what each token had before. Token art and portraits are never changed.</p>
+      <p class="hint" style="margin-top:0.5rem">Apply turns the ring on (and moves tokens still at an art size Ringmaker set earlier to the current setting) for the prototype tokens of matching actors and every matching token on every scene. Remove puts back what each token had before. Token art and portraits are never changed.</p>
     </section>`;
   }
 

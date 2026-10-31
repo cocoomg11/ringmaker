@@ -26,6 +26,9 @@ test("which tokens get the ring", () => {
 test("ringUpdate: turns the ring on, sets the scale only when it's untouched, records what was there", () => {
   const u = R.ringUpdate(tok(), { scale: 0.85 });
   assert.deepEqual(u, { "ring.enabled": true, "ring.subject.scale": 0.85, [`flags.${ID}.prior`]: { enabled: false, scale: 1, applied: 0.85 } });
+  assert.deepEqual(R.ringUpdate(tok()), { "ring.enabled": true, [`flags.${ID}.prior`]: { enabled: false, scale: 1, applied: 1 } }, "default art size is Foundry's 1: only the ring is turned on");
+  const up = R.ringUpdate(tok(true, 0.85, { enabled: false, scale: 1, applied: 0.85 }), { scale: 1 });
+  assert.deepEqual(up, { "ring.subject.scale": 1, [`flags.${ID}.prior`]: { enabled: false, scale: 1, applied: 1 } }, "tokens ringed by 1.0.0 at 0.85 move to the new default");
   const own = R.ringUpdate(tok(false, 1.2), { scale: 0.85 });
   assert.equal(own["ring.subject.scale"], undefined, "a scale you set yourself is kept");
   assert.deepEqual(own[`flags.${ID}.prior`], { enabled: false, scale: 1.2, applied: null });
@@ -55,7 +58,7 @@ test("flag deletion: v14 operator when present, '-=' key otherwise", () => {
 });
 
 test("scale clamp, image fit and batching", () => {
-  assert.equal(R.clampScale(0.1), 0.5); assert.equal(R.clampScale(3), 1.5); assert.equal(R.clampScale("x"), 0.85); assert.equal(R.clampScale(0.876), 0.88);
+  assert.equal(R.clampScale(0.1), 0.5); assert.equal(R.clampScale(3), 1.5); assert.equal(R.clampScale("x"), 1); assert.equal(R.clampScale(0.876), 0.88);
   assert.deepEqual(R.fitRect(256, 256), { x: 0, y: 0, w: 512, h: 512 });
   assert.deepEqual(R.fitRect(512, 256), { x: 0, y: 128, w: 512, h: 256 });
   assert.deepEqual(R.fitRect(0, 0), { x: 0, y: 0, w: 512, h: 512 });
@@ -70,13 +73,15 @@ test("active GM: Foundry's pick, else the lowest id among active GMs", () => {
   assert.equal(G.pickActiveGM([gm("a", false), { id: "p", isGM: false, active: true }]), null);
 });
 
-test("spritesheet JSON: one square frame matching the drawn texture, no colour band", async () => {
+test("spritesheet JSON: a ring frame and its -bkg frame side by side, matching the drawn texture, no colour band", async () => {
   const j = await json("assets/token-ring.json");
-  const frames = Object.values(j.frames);
-  assert.equal(frames.length, 1);
-  assert.deepEqual(frames[0].frame, { x: 0, y: 0, w: R.FRAME, h: R.FRAME });
-  assert.deepEqual(j.meta.size, { w: R.FRAME, h: R.FRAME });
-  assert.equal(frames[0].gridTarget, 1);
+  assert.deepEqual(Object.keys(j.frames), [R.FRAMES.ring, R.FRAMES.bkg]);
+  assert.equal(R.FRAMES.bkg, `${R.FRAMES.ring}-bkg`, "core finds the background as <ring name>-bkg");
+  assert.deepEqual(j.frames[R.FRAMES.ring].frame, { x: 0, y: 0, w: R.FRAME, h: R.FRAME });
+  assert.deepEqual(j.frames[R.FRAMES.bkg].frame, { x: R.FRAME, y: 0, w: R.FRAME, h: R.FRAME });
+  assert.deepEqual(j.meta.size, R.SHEET_SIZE);
+  assert.equal(j.frames[R.FRAMES.ring].gridTarget, 1);
+  assert.equal(Object.keys(j.frames).some(k => k.endsWith("-msk")), false, "no mask: the image keeps its colours");
   assert.deepEqual(j.config.defaultColorBand, { startRadius: 0, endRadius: 0 }, "the image's own colours are kept");
   assert.equal(R.SHEET, "modules/ringmaker/assets/token-ring.json");
 });
@@ -91,4 +96,61 @@ test("module.json", async () => {
   for (const f of m.esmodules) await readFile(new URL(`../${f}`, import.meta.url));
   const log = await readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8");
   assert.match(log, new RegExp(`## ${m.version.replace(/\./g, "\\.")}`), "CHANGELOG has the current version");
+});
+
+// A square RGBA image (flat array) with alpha 255 between radii a and b (pixels), plus a faint shadow just outside.
+function ringImage(size, a, b, shadow = 0) {
+  const d = new Uint8ClampedArray(size * size * 4); const h = size / 2;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const r = Math.hypot(x + 0.5 - h, y + 0.5 - h);
+    d[(y * size + x) * 4 + 3] = r >= a && r <= b ? 255 : (r > b && r <= b + shadow ? 60 : 0);
+  }
+  return d;
+}
+
+test("core ring geometry constants", () => {
+  assert.equal(R.CORE.subject, 0.6666666); assert.equal(R.CORE.thickness, 0.1269848);
+  assert.ok(Math.abs(R.CORE_OUTER - 0.7936514) < 1e-9);
+});
+
+test("measureRing finds the band and ignores a soft shadow", () => {
+  const b = R.measureRing(R.radialProfile(ringImage(256, 108, 122, 6), 256));
+  assert.ok(Math.abs(b.inner - 108 / 128) < 0.01, `inner ${b.inner}`);
+  assert.ok(Math.abs(b.outer - 122.5 / 128) < 0.01, `outer ${b.outer}`);
+  assert.equal(R.measureRing(R.radialProfile(new Uint8ClampedArray(64 * 64 * 4), 64)), null, "empty image");
+  assert.equal(R.measureRing(R.radialProfile(ringImage(64, 0, 40), 64)), null, "a solid disc isn't a ring");
+});
+
+test("ringLayout puts the ring's outer edge on core's and the background under the band", () => {
+  const band = { inner: 108 / 128, outer: 127 / 128 };
+  const L = R.ringLayout(band);
+  assert.ok(Math.abs(L.outerR - R.CORE_OUTER) < 1e-9);
+  assert.ok(Math.abs(band.outer * L.scale - R.CORE_OUTER) < 1e-9, "scaled image edge lands on core's ring edge");
+  assert.ok(Math.abs(L.innerR - band.inner * L.scale) < 1e-9);
+  assert.ok(L.innerR < L.bkgR && L.bkgR < L.outerR, "background edge hidden under the band");
+  const big = R.ringLayout(band, 120);
+  assert.ok(Math.abs(big.outerR - R.CORE_OUTER * 1.2) < 1e-9);
+  assert.equal(R.ringLayout(band, 500).outerR, R.ringLayout(band, 125).outerR, "size is clamped");
+  assert.ok(R.ringLayout(band, 125).outerR < 1, "never past the frame");
+  const fallback = R.ringLayout(null);
+  assert.ok(fallback.innerR > 0 && fallback.innerR < fallback.outerR, "no band found: still a sensible layout");
+});
+
+test("setting helpers: ring size and colour", () => {
+  assert.equal(R.clampSize(10), 50); assert.equal(R.clampSize(200), 125); assert.equal(R.clampSize("x"), 100); assert.equal(R.clampSize(99.6), 100);
+  assert.equal(R.cssColor("#AABBCC"), "#aabbcc"); assert.equal(R.cssColor("red"), R.DEFAULT_BG); assert.equal(R.cssColor(null), "#2b2420");
+});
+
+test("patchShader: ring in front, art trimmed to the background, exact background colour; refuses unknown source", () => {
+  const src = `void x() {}\n    ${R.SHADER_LINES.main}\n    ${R.SHADER_LINES.bkg}\n    ${R.SHADER_LINES.blend}\n    }`;
+  const f = R.patchShader(src, { front: true });
+  assert.match(f, /vec4 ringmakerBackground\(/);
+  assert.ok(f.indexOf("ringmakerBackground(") < f.indexOf(R.SHADER_LINES.main), "helper defined before _main");
+  assert.ok(!f.includes(R.SHADER_LINES.blend) && f.includes("blend(ringColor * rectangularMask, blend(processedColor * ringmakerMask"), "ring over the art");
+  const b = R.patchShader(src, { front: false });
+  assert.ok(b.includes(R.SHADER_LINES.blend), "core's order kept when off");
+  assert.ok(!b.includes(R.SHADER_LINES.bkg) && b.includes("ringmakerBackground(texture(tokenRingTexture, vBackgroundTextureCoord), dist)"));
+  assert.equal(R.patchShader(src.replace(R.SHADER_LINES.blend, "")), null, "changed core shader: not patched");
+  assert.equal(R.patchShader(`${src}\n${R.SHADER_LINES.blend}`), null, "line twice: not patched");
+  assert.equal(R.patchShader(undefined), null);
 });

@@ -2,6 +2,17 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.1.0
+
+Ring size and fit now match Foundry's own rings.
+
+- **Fixed: the ring was too big and the token art sat in a large empty circle.** Ringmaker now finds the ring band in your image (from its transparency) and scales it so its outer edge lands where Foundry's own ring edge is, so ringed tokens are the same size as with the core rings. Images with a drop shadow or extra transparent margin work too.
+- **Background behind the token art**: a filled disc the size of the ring's opening is drawn behind the art, so transparent art and the gap at the edge show a solid colour instead of the map. New **Background colour** setting (default `#2b2420`); a token's own ring background colour (Token configuration › Appearance) is used instead when set, and shown exactly rather than blended.
+- **Ring in front of token art** (new, on by default): the ring is drawn over the art and the art is trimmed to the opening, so square art no longer pokes out past the ring. Turn it off for Foundry's own order (art over the ring). If a future Foundry version changes its ring shader, Ringmaker falls back to Foundry's own drawing and says so in the console.
+- **Ring size** (new, 50–125 %, default 100 %): fine-tune the ring's size against Foundry's own.
+- **Token art size inside the ring** now defaults to 1 (Foundry's default) instead of 0.85; the setting is new (`artScale`), so the old 0.85 isn't carried over. Tokens still at the 0.85 Ringmaker set move to the new value the next time Apply runs (or on load, with *Ring existing tokens on load*). A scale you set on a token yourself is still kept.
+- The Ringmaker menu shows the ring size, background colour and where the ring band was found in your image.
+
 ## 1.0.0
 
 First release.

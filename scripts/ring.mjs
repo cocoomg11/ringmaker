@@ -1,9 +1,15 @@
 /**
  * Ringmaker: your own ring image used through Foundry's dynamic token ring system (not an overlay). The module registers a ring
  * configuration (the initializeDynamicTokenRingConfig hook) whose spritesheet is a small JSON file in the module with one frame.
- * The frame's texture isn't read from disk: each client draws the image from the world setting into a 512 × 512 canvas and hands
+ * The frame's texture isn't read from disk: each client draws the image from the world setting into a 1024 × 512 canvas and hands
  * that texture to the spritesheet loader, so one image of any size is enough and it's one shared texture. The colour band is zero,
  * so the image keeps its own colours. Tokens then only need `ring.enabled`; their token image and the actor's portrait never change.
+ *
+ * Geometry follows Foundry's own rings (TokenRing): in a frame normalised to 1 at its edge, core rings put the subject inside radius
+ * 0.6666666 and the ring band out to 0.6666666 + 0.1269848 ≈ 0.794; the background frame ("<ring>-bkg") is a disc under it. The ring
+ * image's band is measured from its alpha and scaled so its outer edge lands on 0.794 (× the Ring size setting), and a background disc
+ * the size of the ring's opening is drawn next to it. With "Ring in front of token art", a subclass of core's ring shader draws the
+ * ring over the art, trims the art to the background disc and uses the token's own background colour exactly when one is set.
  *
  * Which tokens: NPCs only (default) or every token. "NPC" is system-neutral: an actor whose type isn't "character" and that no
  * player owns. New tokens get the ring as they're created; existing ones with Apply (active GM, batched). What Ringmaker changed is
@@ -16,6 +22,13 @@ export const ID = "ringmaker";
 export const RING_ID = "ringmaker";
 export const SHEET = `modules/${ID}/assets/token-ring.json`;
 export const FRAME = 512;
+export const SHEET_SIZE = { w: FRAME * 2, h: FRAME };
+export const FRAMES = { ring: "ringmaker-ring", bkg: "ringmaker-ring-bkg" };
+/** Core ring geometry (TokenRing defaults), in frame units where 1 is the frame's edge. */
+export const CORE = { subject: 0.6666666, thickness: 0.1269848 };
+export const CORE_OUTER = CORE.subject + CORE.thickness;
+export const DEFAULT_BG = "#2b2420";
+export const PLUGIN = "ringmakerRingBatch";
 export const FLAG = "prior";
 export const TARGETS = { npc: "NPCs only", all: "Every token (player characters too)" };
 const BATCH = 100;
@@ -35,7 +48,77 @@ export function wants(actor, mode = "npc") {
 
 const num = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 /** The subject scale setting, kept to 0.5 – 1.5. */
-export const clampScale = v => Math.min(1.5, Math.max(0.5, Math.round(num(v, 0.85) * 100) / 100));
+export const clampScale = v => Math.min(1.5, Math.max(0.5, Math.round(num(v, 1) * 100) / 100));
+/** The ring size setting (percent of core's ring size), kept to 50 – 125. */
+export const clampSize = v => Math.min(125, Math.max(50, Math.round(num(v, 100))));
+/** A "#rrggbb" colour, or the default. */
+export const cssColor = (v, d = DEFAULT_BG) => { const c = String(v ?? "").trim(); return /^#[0-9a-f]{6}$/i.test(c) ? c.toLowerCase() : d; };
+
+/**
+ * Mean alpha (0 – 255) by distance from the centre of a square RGBA image (ImageData-style flat array): index r averages the
+ * pixels whose centres are r to r + 1 pixels out; the last index is size / 2.
+ */
+export function radialProfile(data, size) {
+  const half = size / 2; const n = Math.floor(half) + 1; const sum = new Float64Array(n); const cnt = new Float64Array(n);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const r = Math.floor(Math.hypot(x + 0.5 - half, y + 0.5 - half)); if (r >= n) continue;
+    sum[r] += data[(y * size + x) * 4 + 3]; cnt[r]++;
+  }
+  return Array.from(sum, (v, i) => (cnt[i] ? v / cnt[i] : 0));
+}
+
+/**
+ * The ring band in a radial alpha profile, as fractions of the half-size: outer is the last radius at least half opaque, inner
+ * the first such radius going out from the centre. Soft shadows below half opacity don't count. null when there is no band.
+ */
+export function measureRing(profile, threshold = 128) {
+  const last = profile.length - 1; if (last < 1) return null;
+  let outer = -1; for (let r = last; r >= 0; r--) if (profile[r] >= threshold) { outer = r; break; }
+  if (outer < 1) return null;
+  let inner = outer; while (inner > 0 && profile[inner - 1] >= threshold) inner--;
+  if (inner === 0) return null; // opaque all the way to the middle: not a ring
+  return { outer: Math.min(1, (outer + 1) / last), inner: inner / last };
+}
+
+/**
+ * Where the ring image goes in the frame: scale k (image drawn at k × the frame, centred) so the band's outer edge lands on core's
+ * ring edge × size%, and the background disc radius (the opening plus half the band, so its edge sits under the ring). Frame units.
+ */
+export function ringLayout(band, sizePct = 100) {
+  const b = band && band.outer > 0 && band.inner > 0 && band.inner < band.outer ? band : { outer: 1, inner: 0.84 };
+  const outerR = Math.min(0.99, CORE_OUTER * clampSize(sizePct) / 100);
+  const k = outerR / b.outer; const innerR = b.inner * k;
+  return { scale: k, outerR, innerR, bkgR: innerR + (outerR - innerR) / 2 };
+}
+
+/** Lines of core's ring fragment shader (v14) that the Ringmaker shader changes. */
+export const SHADER_LINES = {
+  main: "vec4 _main() {",
+  bkg: "vec4 backgroundColor = colorizeTokenBackground(texture(tokenRingTexture, vBackgroundTextureCoord), dist);",
+  blend: "vec4 blendedResult = blend(processedColor, blend(ringColor, backgroundColor) * rectangularMask);"
+};
+const RM_BKG = `
+    vec4 ringmakerBackground(in vec4 bkg, in float dist) {
+      float waveFactor = hasState(STATE_BKG_WAVE) ? (0.5 + wave(dist) * 1.5) : 1.0;
+      vec3 c = (vBackgroundColor == vec3(1.0)) ? unpremultiplySafe(bkg) : vBackgroundColor;
+      return vec4(c, 1.0) * bkg.a * waveFactor;
+    }
+
+    `;
+/**
+ * Core's ring fragment shader with Ringmaker's changes: the background is the drawn disc's own colour, or exactly the token's
+ * background colour when one is set; with front, the ring is drawn over the art and the art is trimmed to the background disc.
+ * null when the source isn't the one this was written for (each line must occur exactly once), so core's shader is used instead.
+ */
+export function patchShader(src, { front = true } = {}) {
+  if (typeof src !== "string") return null;
+  for (const line of Object.values(SHADER_LINES)) if (src.split(line).length !== 2) return null;
+  let out = src.replace(SHADER_LINES.main, `${RM_BKG}${SHADER_LINES.main}`)
+    .replace(SHADER_LINES.bkg, "vec4 backgroundColor = ringmakerBackground(texture(tokenRingTexture, vBackgroundTextureCoord), dist);");
+  if (front) out = out.replace(SHADER_LINES.blend, "float ringmakerMask = texture(tokenRingTexture, vBackgroundTextureCoord).a * rectangularMask;\n"
+    + "    vec4 blendedResult = blend(ringColor * rectangularMask, blend(processedColor * ringmakerMask, backgroundColor * rectangularMask));");
+  return out;
+}
 
 /**
  * The update that puts the ring on a token (or prototype token) source: { ring: { enabled, subject: { scale } }, flags }.
@@ -43,7 +126,7 @@ export const clampScale = v => Math.min(1.5, Math.max(0.5, Math.round(num(v, 0.8
  * untouched (1) or still the value Ringmaker set; a scale you chose yourself is kept. The first time, the previous values are
  * recorded in flags.ringmaker.prior so remove can put them back.
  */
-export function ringUpdate(src, { scale = 0.85, prefix = "" } = {}) {
+export function ringUpdate(src, { scale = 1, prefix = "" } = {}) {
   const ring = src?.ring ?? {}; const rec = src?.flags?.[ID]?.[FLAG] ?? null;
   const enabled = !!ring.enabled; const cur = num(ring.subject?.scale, 1);
   const s = clampScale(scale);
@@ -90,16 +173,22 @@ export function foundryDeletes(list, del = globalThis._del) {
 const S = key => game.settings.get(ID, key);
 const image = () => String(S("image") ?? "").trim();
 const mode = () => S("targets") === "all" ? "all" : "npc";
-const scale = () => clampScale(S("subjectScale"));
+const scale = () => clampScale(S("artScale"));
+const size = () => clampSize(S("ringSize"));
+const bg = () => cssColor(S("background"));
+const front = () => S("ringInFront") !== false;
 const actorOf = t => t.actor ?? game.actors.get(t.actorId) ?? null;
-let texture = null; let loadError = null; let hooked = false;
+let texture = null; let loadError = null; let hooked = false; let band = null; let shaderPatched = false;
 
 export function registerSettings() {
   const s = (key, name, hint, type, def, extra = {}) => game.settings.register(ID, key, { name, hint, scope: "world", config: true, type, default: def, ...extra });
   s("image", "Ring image", "A square PNG with a transparent middle (256 × 256 or larger). Used by every token with Foundry's dynamic ring turned on. Leave empty to leave Foundry's own ring alone. Reloads Foundry.", String, "", { filePicker: "image", requiresReload: true });
   s("targets", "Which tokens", "Which tokens Ringmaker turns the ring on for. NPCs are actors that aren't of the \"character\" type and that no player owns.", String, "npc", { choices: TARGETS });
   s("newTokens", "Ring new tokens", "Tokens placed from now on get the ring as they're created.", Boolean, true);
-  s("subjectScale", "Token art size inside the ring", "Foundry's ring subject scale, set on the tokens Ringmaker rings. Below 1 the ring sits outside the token art; 1 draws the art over the ring. A scale you set on a token yourself is kept.", Number, 0.85, { range: { min: 0.5, max: 1.5, step: 0.01 } });
+  s("ringSize", "Ring size", "How big the ring is, as a percentage of Foundry's own ring (100 = the same size as core rings). Ringmaker finds the ring band in your image and scales it to this size; the background and the token art follow. Reloads Foundry.", Number, 100, { range: { min: 50, max: 125, step: 1 }, requiresReload: true });
+  s("background", "Background colour", "The colour behind the token art, inside the ring. A token's own ring background colour (Token configuration) is used instead when it has one. Reloads Foundry.", new foundry.data.fields.ColorField({ required: true, nullable: false, blank: false, initial: DEFAULT_BG }), DEFAULT_BG, { requiresReload: true });
+  s("ringInFront", "Ring in front of token art", "Draw the ring over the token art and trim the art to the ring's opening. Turn off for Foundry's own order (art over the ring, so cut-out art can reach past it). Reloads Foundry.", Boolean, true, { requiresReload: true });
+  s("artScale", "Token art size inside the ring", "Foundry's ring subject scale, set on the tokens Ringmaker rings. 1 (Foundry's default) keeps the ring at its normal size; below 1 the ring grows around the art, above 1 it shrinks. A scale you set on a token yourself is kept.", Number, 1, { range: { min: 0.5, max: 1.5, step: 0.01 } });
   s("existingOnLoad", "Ring existing tokens on load", "Each time the world loads, the active GM puts the ring on any token (and actor prototype token) that should have it and doesn't yet.", Boolean, false);
 }
 
@@ -110,18 +199,27 @@ export function init() {
   Hooks.on("initializeDynamicTokenRingConfig", cfg => {
     const D = foundry.canvas?.placeables?.tokens?.DynamicRingData;
     if (!D) return console.warn(`${ID} | dynamic token rings not available`);
-    cfg.addConfig(RING_ID, new D({ id: RING_ID, label: "Ringmaker", spritesheet: SHEET }));
+    const shaderClass = ringShader();
+    cfg.addConfig(RING_ID, new D({ id: RING_ID, label: "Ringmaker", spritesheet: SHEET, ...(shaderClass ? { framework: { shaderClass } } : {}) }));
   });
+  // Made the active ring style before the canvas creates its renderer, so core registers Ringmaker's shader plugin itself.
+  Hooks.once("canvasConfig", () => { try { CONFIG.Token.ring.useConfig(RING_ID); } catch { } });
   // Registered before the canvas loads the spritesheet: the loader reads the frames from the JSON and takes this texture.
   Hooks.once("setup", () => {
-    const el = document.createElement("canvas"); el.width = el.height = FRAME;
+    const el = document.createElement("canvas"); el.width = SHEET_SIZE.w; el.height = SHEET_SIZE.h;
     texture = PIXI.Texture.from(el);
     try { PIXI.Assets.add({ alias: SHEET, src: SHEET, data: { texture } }); } catch (e) { console.warn(`${ID} | ring texture`, e); }
     try { foundry.canvas.TextureLoader.pinSource?.(SHEET); } catch { }
     draw(el).catch(e => { loadError = e?.message ?? String(e); console.warn(`${ID} | ring image "${image()}" couldn't be loaded`, e); });
   });
   // Foundry picks the ring configuration after the setup hook; use ours before each canvas draw loads its textures.
-  Hooks.on("canvasInit", () => { try { CONFIG.Token.ring.useConfig(RING_ID); } catch { } });
+  Hooks.on("canvasInit", () => {
+    try {
+      CONFIG.Token.ring.useConfig(RING_ID);
+      const BR = foundry.canvas.rendering?.batching?.BatchRenderer; const Core = coreShader();
+      if (shaderPatched && Core && BR && !BR.hasPlugin(PLUGIN)) { CONFIG.Token.ring.shaderClass = Core; shaderPatched = false; } // not registered: core's shader
+    } catch { }
+  });
   Hooks.on("preCreateToken", (doc, data, options, userId) => {
     if (userId !== game.user.id || !S("newTokens")) return;
     if (!wants(actorOf(doc), mode())) return;
@@ -129,15 +227,33 @@ export function init() {
   });
 }
 
+const coreShader = () => foundry.canvas.rendering?.shaders?.TokenRingSamplerShader ?? null;
+/** A subclass of core's ring shader with Ringmaker's changes, or null (core's shader is used) when its source isn't as expected. */
+function ringShader() {
+  const Core = coreShader(); const frag = Core && patchShader(Core._batchFragmentShader, { front: front() });
+  if (!frag) { console.warn(`${ID} | core ring shader not as expected; using Foundry's own (art over the ring)`); return null; }
+  shaderPatched = true;
+  return class RingmakerRingShader extends Core {
+    static classPluginName = PLUGIN;
+    static _batchFragmentShader = frag;
+  };
+}
+
 async function draw(el) {
   const img = new Image(); img.decoding = "async";
   if (/^https?:/i.test(image())) img.crossOrigin = "anonymous"; // a tainted canvas can't be uploaded to the GPU
   img.src = image();
   await img.decode();
-  const r = fitRect(img.naturalWidth, img.naturalHeight);
-  const ctx = el.getContext("2d"); ctx.clearRect(0, 0, FRAME, FRAME); ctx.drawImage(img, r.x, r.y, r.w, r.h);
+  // The image, fitted into a square, then measured to find its ring band.
+  const sq = document.createElement("canvas"); sq.width = sq.height = FRAME; const sctx = sq.getContext("2d", { willReadFrequently: true });
+  const r = fitRect(img.naturalWidth, img.naturalHeight); sctx.drawImage(img, r.x, r.y, r.w, r.h);
+  band = measureRing(radialProfile(sctx.getImageData(0, 0, FRAME, FRAME).data, FRAME));
+  const L = ringLayout(band, size()); const d = FRAME * L.scale;
+  const ctx = el.getContext("2d"); ctx.clearRect(0, 0, el.width, el.height);
+  ctx.drawImage(sq, (FRAME - d) / 2, (FRAME - d) / 2, d, d); // ring frame
+  ctx.fillStyle = bg(); ctx.beginPath(); ctx.arc(FRAME * 1.5, FRAME / 2, L.bkgR * FRAME / 2, 0, Math.PI * 2); ctx.fill(); // background frame
   texture.baseTexture.update();
-  loadError = null;
+  loadError = band ? null : "no ring band found in the image (it needs a transparent middle); drawn to fit the frame";
 }
 
 export function ready() {
@@ -195,7 +311,7 @@ export async function remove() {
 
 /** What's set and whether the ring is in use. */
 export function status() {
-  const st = { image: image(), mode: mode(), scale: scale(), registered: false, active: null, error: loadError };
+  const st = { image: image(), mode: mode(), scale: scale(), size: size(), background: bg(), front: front(), shader: shaderPatched, band, registered: false, active: null, error: loadError };
   try { st.registered = CONFIG.Token.ring.configIDs.includes(RING_ID); st.active = CONFIG.Token.ring.id === RING_ID; } catch { }
   return st;
 }
