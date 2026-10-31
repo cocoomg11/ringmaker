@@ -11,6 +11,10 @@
  * the size of the ring's opening is drawn next to it. With "Ring in front of token art", a subclass of core's ring shader draws the
  * ring over the art, trims the art to the background disc and uses the token's own background colour exactly when one is set.
  *
+ * Pop-out tokens (flags.ringmaker.popOut): a TokenRing subclass adds a state bit (POPOUT_STATE) for them, and with the ring in front
+ * the shader draws the art outside the background disc over the ring instead of trimming it; art inside the disc stays under the
+ * ring as for other tokens. So the parts of a cut-out image that reach past the ring show in front of it.
+ *
  * Which tokens: NPCs only (default) or every token. "NPC" is system-neutral: an actor whose type isn't "character" and that no
  * player owns. New tokens get the ring as they're created; existing ones with Apply (active GM, batched). What Ringmaker changed is
  * recorded on each token (flags.ringmaker.prior) so Remove puts it back.
@@ -30,6 +34,10 @@ export const CORE_OUTER = CORE.subject + CORE.thickness;
 export const DEFAULT_BG = "#2b2420";
 export const PLUGIN = "ringmakerRingBatch";
 export const FLAG = "prior";
+/** Token flag (flags.ringmaker.popOut): let the art break out of the ring. */
+export const POPOUT = "popOut";
+/** Ring state bit for pop-out tokens, above core's TokenRing effects (0x01 – 0x20). */
+export const POPOUT_STATE = 0x40;
 export const TARGETS = { npc: "NPCs only", all: "Every token (player characters too)" };
 const BATCH = 100;
 
@@ -97,6 +105,7 @@ export const SHADER_LINES = {
   bkg: "vec4 backgroundColor = colorizeTokenBackground(texture(tokenRingTexture, vBackgroundTextureCoord), dist);",
   blend: "vec4 blendedResult = blend(processedColor, blend(ringColor, backgroundColor) * rectangularMask);"
 };
+const POPOUT_GLSL = `0x${POPOUT_STATE.toString(16)}U`;
 const RM_BKG = `
     vec4 ringmakerBackground(in vec4 bkg, in float dist) {
       float waveFactor = hasState(STATE_BKG_WAVE) ? (0.5 + wave(dist) * 1.5) : 1.0;
@@ -108,6 +117,7 @@ const RM_BKG = `
 /**
  * Core's ring fragment shader with Ringmaker's changes: the background is the drawn disc's own colour, or exactly the token's
  * background colour when one is set; with front, the ring is drawn over the art and the art is trimmed to the background disc.
+ * Pop-out tokens (state bit POPOUT_STATE) also get the art outside the background disc drawn over the ring instead of trimmed.
  * null when the source isn't the one this was written for (each line must occur exactly once), so core's shader is used instead.
  */
 export function patchShader(src, { front = true } = {}) {
@@ -116,7 +126,8 @@ export function patchShader(src, { front = true } = {}) {
   let out = src.replace(SHADER_LINES.main, `${RM_BKG}${SHADER_LINES.main}`)
     .replace(SHADER_LINES.bkg, "vec4 backgroundColor = ringmakerBackground(texture(tokenRingTexture, vBackgroundTextureCoord), dist);");
   if (front) out = out.replace(SHADER_LINES.blend, "float ringmakerMask = texture(tokenRingTexture, vBackgroundTextureCoord).a * rectangularMask;\n"
-    + "    vec4 blendedResult = blend(ringColor * rectangularMask, blend(processedColor * ringmakerMask, backgroundColor * rectangularMask));");
+    + "    vec4 blendedResult = blend(ringColor * rectangularMask, blend(processedColor * ringmakerMask, backgroundColor * rectangularMask));\n"
+    + `    if ( (vStates & ${POPOUT_GLSL}) != 0U ) blendedResult = blend(processedColor * (1.0 - ringmakerMask), blendedResult);`);
   return out;
 }
 
@@ -147,6 +158,20 @@ export function ringRevert(src, { prefix = "" } = {}) {
   const cur = num(src?.ring?.subject?.scale, 1);
   if (rec.applied != null && cur === rec.applied) out[`${prefix}ring.subject.scale`] = num(rec.scale, 1);
   return out;
+}
+
+/** Whether a token (or prototype token) source has pop-out on. */
+export const isPopOut = src => src?.flags?.[ID]?.[POPOUT] === true;
+
+/** Ring effects with the pop-out state bit set or cleared. */
+export function popOutEffects(effects, on) {
+  const e = Number(effects) >>> 0;
+  return on ? (e | POPOUT_STATE) : (e & ~POPOUT_STATE) >>> 0;
+}
+
+/** The update that turns pop-out on or off for a token source (keys prefixed, e.g. "prototypeToken."). null when it's already so. */
+export function popOutUpdate(src, on, { prefix = "" } = {}) {
+  return isPopOut(src) === !!on ? null : { [`${prefix}flags.${ID}.${POPOUT}`]: !!on };
 }
 
 /** Where to draw an image of w × h in the square frame: centred, scaled to fit. */
@@ -199,8 +224,9 @@ export function init() {
   Hooks.on("initializeDynamicTokenRingConfig", cfg => {
     const D = foundry.canvas?.placeables?.tokens?.DynamicRingData;
     if (!D) return console.warn(`${ID} | dynamic token rings not available`);
-    const shaderClass = ringShader();
-    cfg.addConfig(RING_ID, new D({ id: RING_ID, label: "Ringmaker", spritesheet: SHEET, ...(shaderClass ? { framework: { shaderClass } } : {}) }));
+    const shaderClass = ringShader(); const ringClass = popOutRingClass();
+    const framework = { ...(shaderClass ? { shaderClass } : {}), ...(ringClass ? { ringClass } : {}) };
+    cfg.addConfig(RING_ID, new D({ id: RING_ID, label: "Ringmaker", spritesheet: SHEET, ...(Object.keys(framework).length ? { framework } : {}) }));
   });
   // Made the active ring style before the canvas creates its renderer, so core registers Ringmaker's shader plugin itself.
   Hooks.once("canvasConfig", () => { try { CONFIG.Token.ring.useConfig(RING_ID); } catch { } });
@@ -220,6 +246,11 @@ export function init() {
       if (shaderPatched && Core && BR && !BR.hasPlugin(PLUGIN)) { CONFIG.Token.ring.shaderClass = Core; shaderPatched = false; } // not registered: core's shader
     } catch { }
   });
+  // Pop-out turned on or off: the ring's state bits are worked out again (configureVisuals).
+  Hooks.on("updateToken", (doc, changed) => {
+    if (!foundry.utils.hasProperty(changed, `flags.${ID}.${POPOUT}`) && !foundry.utils.hasProperty(changed, `flags.${ID}.-=${POPOUT}`)) return;
+    const t = doc.object; if (t?.hasDynamicRing) { t.ring.configureVisuals(); t.renderFlags.set({ refreshRingVisuals: true }); }
+  });
   Hooks.on("preCreateToken", (doc, data, options, userId) => {
     if (userId !== game.user.id || !S("newTokens")) return;
     if (!wants(actorOf(doc), mode())) return;
@@ -237,6 +268,50 @@ function ringShader() {
     static classPluginName = PLUGIN;
     static _batchFragmentShader = frag;
   };
+}
+
+/** Core's TokenRing with the pop-out state bit added for tokens that have it on. null when core's class isn't there. */
+function popOutRingClass() {
+  const Core = foundry.canvas?.placeables?.tokens?.TokenRing; if (!Core) return null;
+  return class RingmakerTokenRing extends Core {
+    configureVisuals() {
+      super.configureVisuals();
+      this.effects = popOutEffects(this.effects, isPopOut(this.token?.document));
+    }
+  };
+}
+
+/** The checkbox for pop-out, added to the Dynamic Token Ring section of the token configuration (prototype tokens too). */
+export function addPopOutField(app, element) {
+  if (!game.user.isGM) return;
+  const root = element instanceof HTMLElement ? element : element?.[0]; if (!root) return;
+  const enabled = root.querySelector('[name="ring.enabled"]'); const group = enabled?.closest(".form-group");
+  if (!group || root.querySelector(`[name="flags.${ID}.${POPOUT}"]`)) return;
+  const doc = app.document ?? app.token ?? app.options?.document ?? null;
+  const on = isPopOut(doc?._source ?? doc);
+  const id = `${app.id}-${ID}-${POPOUT}`;
+  const div = document.createElement("div"); div.className = "form-group";
+  div.innerHTML = `<label for="${id}">Let art break out of the ring</label><div class="form-fields"><input type="checkbox" id="${id}" name="flags.${ID}.${POPOUT}" ${on ? "checked" : ""}></div>`
+    + `<p class="hint">Ringmaker: token art outside the ring's opening is drawn over the ring instead of trimmed, so cut-out art can reach past the ring. Art inside the opening stays under the ring. Keep the art's own disc inside the opening (about two thirds of the image's width).</p>`;
+  group.after(div);
+}
+
+/** GM: turns pop-out on or off for tokens (placeables, token documents or prototype tokens, or their ids on the viewed scene). */
+export async function setPopOut(tokens, on = true) {
+  if (!game.user.isGM) { ui.notifications.warn("Ringmaker: only a GM can change tokens."); return null; }
+  const list = (Array.isArray(tokens) ? tokens : [tokens]).map(t => typeof t === "string" ? canvas.scene?.tokens.get(t) : (t?.document ?? t)).filter(Boolean);
+  const byScene = new Map(); const actors = [];
+  for (const d of list) {
+    if (d.documentName === "Token") {
+      const u = popOutUpdate(d._source, on); if (!u) continue;
+      const s = d.parent; if (!byScene.has(s)) byScene.set(s, []); byScene.get(s).push({ _id: d.id, ...u });
+    } else if (d.actor && d.constructor?.name === "PrototypeToken") {
+      const u = popOutUpdate(d.actor._source.prototypeToken, on, { prefix: "prototypeToken." }); if (u) actors.push({ _id: d.actor.id, ...u });
+    }
+  }
+  for (const c of chunks(actors)) await Actor.updateDocuments(c);
+  let n = 0; for (const [s, ups] of byScene) for (const c of chunks(ups)) { await s.updateEmbeddedDocuments("Token", c); n += c.length; }
+  return { actors: actors.length, tokens: n };
 }
 
 async function draw(el) {

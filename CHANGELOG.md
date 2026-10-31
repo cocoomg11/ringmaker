@@ -2,6 +2,14 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.2.0
+
+Token art can break out of the ring.
+
+- **Let art break out of the ring** (new, per token): a checkbox in the Dynamic Token Ring section of the token configuration (placed and prototype tokens, GM only). For tokens with it on, art outside the ring's opening is drawn over the ring instead of being trimmed, so cut-out art (a creature whose head or wings reach past a disc) shows in front of and beyond the ring; art inside the opening stays under the ring as before. Keep the art's own disc inside the ring's opening, about two thirds of the image's width. Other tokens are drawn as before. Stored as `flags.ringmaker.popOut`.
+- API: `setPopOut(tokens, on)` turns it on or off for placed tokens, token documents, prototype tokens or token ids on the viewed scene (GM only).
+- Pop-out only matters with **Ring in front of token art** on; with it off every token already uses Foundry's order (art over the ring).
+
 ## 1.1.0
 
 Ring size and fit now match Foundry's own rings.

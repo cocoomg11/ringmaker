@@ -154,3 +154,26 @@ test("patchShader: ring in front, art trimmed to the background, exact backgroun
   assert.equal(R.patchShader(`${src}\n${R.SHADER_LINES.blend}`), null, "line twice: not patched");
   assert.equal(R.patchShader(undefined), null);
 });
+
+test("pop-out: flag, state bit and update", () => {
+  assert.equal(R.POPOUT_STATE, 0x40); assert.ok(R.POPOUT_STATE > 0x20, "above core's ring effects");
+  assert.equal(R.isPopOut({ flags: { [ID]: { popOut: true } } }), true);
+  assert.equal(R.isPopOut({ flags: { [ID]: { popOut: "yes" } } }), false, "only true counts");
+  assert.equal(R.isPopOut(null), false);
+  assert.equal(R.popOutEffects(1, true), 0x41); assert.equal(R.popOutEffects(0x41, false), 1);
+  assert.equal(R.popOutEffects(0x2b, true), 0x6b, "core's effects are kept");
+  assert.equal(R.popOutEffects(undefined, false), 0);
+  assert.deepEqual(R.popOutUpdate(tok(), true), { [`flags.${ID}.popOut`]: true });
+  assert.deepEqual(R.popOutUpdate({ flags: { [ID]: { popOut: true } } }, false, { prefix: "prototypeToken." }), { [`prototypeToken.flags.${ID}.popOut`]: false });
+  assert.equal(R.popOutUpdate({ flags: { [ID]: { popOut: true } } }, true), null, "already on");
+  assert.equal(R.popOutUpdate(tok(), false), null, "already off");
+});
+
+test("patchShader: pop-out tokens get the art outside the background disc over the ring; others unchanged", () => {
+  const src = `void x() {}\n    ${R.SHADER_LINES.main}\n    ${R.SHADER_LINES.bkg}\n    ${R.SHADER_LINES.blend}\n    }`;
+  const f = R.patchShader(src, { front: true });
+  const i = f.indexOf("ringmakerMask = "), j = f.indexOf("(vStates & 0x40U) != 0U");
+  assert.ok(i > 0 && j > i, "pop-out branch after the ring-in-front blend");
+  assert.match(f.slice(j), /blendedResult = blend\(processedColor \* \(1\.0 - ringmakerMask\), blendedResult\);/, 'only art outside the disc goes over the ring');
+  assert.equal(R.patchShader(src, { front: false }).includes("0x40U"), false, "ring behind: core's order for every token already");
+});

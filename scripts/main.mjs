@@ -1,7 +1,7 @@
 /**
  * Ringmaker entry point: settings, the settings menu, the API and the hooks.
- * API: game.modules.get("ringmaker").api = { applyAll({ npcOnly }), remove(), plan({ npcOnly }), status() }.
- * applyAll and remove are active GM only.
+ * API: game.modules.get("ringmaker").api = { applyAll({ npcOnly }), remove(), plan({ npcOnly }), status(), setPopOut(tokens, on) }.
+ * applyAll and remove are active GM only; setPopOut is GM only.
  */
 import * as Ring from "./ring.mjs";
 import { RingmakerMenu } from "./menu.mjs";
@@ -10,7 +10,8 @@ export const API = {
   applyAll: (opts = {}) => Ring.applyAll(opts),
   remove: () => Ring.remove(),
   plan: (opts = {}) => { const p = Ring.plan(opts); return { actors: p.actors.length, tokens: p.tokens }; },
-  status: () => Ring.status()
+  status: () => Ring.status(),
+  setPopOut: (tokens, on = true) => Ring.setPopOut(tokens, on)
 };
 
 Hooks.once("init", () => {
@@ -24,3 +25,5 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => Ring.ready());
+// Token configuration (placed and prototype tokens): the pop-out checkbox in the Dynamic Token Ring section.
+Hooks.on("renderTokenApplication", (app, element) => Ring.addPopOutField(app, element));

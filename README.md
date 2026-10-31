@@ -47,6 +47,10 @@ All in **Game Settings › Configure Settings › Ringmaker** (world settings, G
 | Token art size inside the ring | 1 | Foundry's ring subject scale on the tokens Ringmaker rings. 1 keeps the ring at its normal size; below 1 the ring grows around the art, above 1 it shrinks. A scale you set on a token yourself is kept. |
 | Ring existing tokens on load | off | Each time the world loads, the active GM rings any matching token that doesn't have the ring yet. |
 
+### Art that breaks out of the ring
+
+For cut-out token art (say a dragon whose head and wings reach past a round frame), tick **Let art break out of the ring** in the token's configuration (Appearance › Dynamic Token Ring; GM only, placed or prototype tokens). Art outside the ring's opening is then drawn over the ring instead of trimmed, so the parts that reach past it show in front of the ring; art inside the opening stays under the ring as usual. Give the art a transparent background and keep its own disc inside the ring's opening (about two thirds of the image's width, centred). Other tokens aren't affected. It needs **Ring in front of token art**; with that off, every token's art is already drawn over the ring. The choice is kept in `flags.ringmaker.popOut`.
+
 **Open Ringmaker** (same page) shows what's set and has two buttons:
 
 - **Apply ring to existing tokens**: asks first, then turns the ring on for the prototype tokens of matching actors and every matching token on every scene.
@@ -68,6 +72,7 @@ rm.plan();                       // { actors, tokens } still to ring, without ch
 await rm.applyAll({ npcOnly });  // active GM: ring existing tokens
 await rm.remove();               // active GM: undo Ringmaker's changes
 rm.status();                     // { image, mode, scale, size, background, front, shader, band, registered, active, error }
+await rm.setPopOut(tokens, true); // GM: let these tokens' art break out of the ring (false turns it off)
 ```
 
 ## About
