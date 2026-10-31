@@ -2,9 +2,16 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
-## Unreleased
+## 1.4.1
 
 - **Fixed: a token kept drawing its art outside the ring after pop-out was turned off** when the same update also changed its art framing (for example **Remove Ringmaker's ring**, which deletes all of Ringmaker's flags at once). The token now redraws for both changes; before, it needed a scene reload.
+- **Note on Fit:** Fit measures the image's transparent margin, so it is only useful on transparent cut-out art. On a full-bleed portrait (no transparent edge) it has nothing to measure; set Zoom and Focus by hand instead.
+
+### Live checklist (needs a Foundry world)
+
+- On a placed token with pop-out on and a zoom set, one update that deletes both flags (or **Remove Ringmaker's ring**) puts the art back inside the ring with no reload, on the GM and on a player client.
+- Pop-out alone and zoom alone still redraw as before.
+- Target effects (Pulse, Gradient, Flash) still show when a player targets a ringed token, on that player's and the GM's client, and stop on untarget.
 
 ## 1.4.0
 
