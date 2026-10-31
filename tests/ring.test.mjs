@@ -33,6 +33,7 @@ test("ringUpdate: turns the ring on, sets the scale only when it's untouched, re
   assert.equal(own["ring.subject.scale"], undefined, "a scale you set yourself is kept");
   assert.deepEqual(own[`flags.${ID}.prior`], { enabled: false, scale: 1.2, applied: null });
   assert.equal(R.ringUpdate(tok(true, 0.85, { enabled: false, scale: 1, applied: 0.85 }), { scale: 0.85 }), null, "already done");
+  assert.equal(R.ringUpdate(tok(true, 1, { enabled: true, scale: 1, applied: 1 })), null, "already recorded, nothing to change");
   const again = R.ringUpdate(tok(true, 0.85, { enabled: false, scale: 1, applied: 0.85 }), { scale: 0.9 });
   assert.equal(again["ring.subject.scale"], 0.9, "Ringmaker's own scale follows the setting");
   assert.deepEqual(again[`flags.${ID}.prior`], { enabled: false, scale: 1, applied: 0.9 }, "the original values stay recorded");
@@ -73,7 +74,7 @@ test("active GM: Foundry's pick, else the lowest id among active GMs", () => {
   assert.equal(G.pickActiveGM([gm("a", false), { id: "p", isGM: false, active: true }]), null);
 });
 
-test("spritesheet JSON: a ring frame and its -bkg frame side by side, matching the drawn texture, no colour band", async () => {
+test("spritesheet JSON: a ring frame and its -bkg frame side by side, matching the drawn texture", async () => {
   const j = await json("assets/token-ring.json");
   assert.deepEqual(Object.keys(j.frames), [R.FRAMES.ring, R.FRAMES.bkg]);
   assert.equal(R.FRAMES.bkg, `${R.FRAMES.ring}-bkg`, "core finds the background as <ring name>-bkg");
@@ -82,7 +83,6 @@ test("spritesheet JSON: a ring frame and its -bkg frame side by side, matching t
   assert.deepEqual(j.meta.size, R.SHEET_SIZE);
   assert.equal(j.frames[R.FRAMES.ring].gridTarget, 1);
   assert.equal(Object.keys(j.frames).some(k => k.endsWith("-msk")), false, "no mask: the image keeps its colours");
-  assert.deepEqual(j.config.defaultColorBand, { startRadius: 0, endRadius: 0 }, "the image's own colours are kept");
   assert.equal(R.SHEET, "modules/ringmaker/assets/token-ring.json");
 });
 
@@ -142,7 +142,7 @@ test("setting helpers: ring size and colour", () => {
 });
 
 test("patchShader: ring in front, art trimmed to the background, exact background colour; refuses unknown source", () => {
-  const src = `void x() {}\n    ${R.SHADER_LINES.main}\n    ${R.SHADER_LINES.bkg}\n    ${R.SHADER_LINES.blend}\n    }`;
+  const src = `void x() {}\n    ${R.SHADER_LINES.pulse}\n    ${R.SHADER_LINES.mix}\n    ${R.SHADER_LINES.main}\n    ${R.SHADER_LINES.bkg}\n    ${R.SHADER_LINES.blend}\n    }`;
   const f = R.patchShader(src, { front: true });
   assert.match(f, /vec4 ringmakerBackground\(/);
   assert.ok(f.indexOf("ringmakerBackground(") < f.indexOf(R.SHADER_LINES.main), "helper defined before _main");
@@ -170,7 +170,7 @@ test("pop-out: flag, state bit and update", () => {
 });
 
 test("patchShader: pop-out tokens get the art outside the background disc over the ring; others unchanged", () => {
-  const src = `void x() {}\n    ${R.SHADER_LINES.main}\n    ${R.SHADER_LINES.bkg}\n    ${R.SHADER_LINES.blend}\n    }`;
+  const src = `void x() {}\n    ${R.SHADER_LINES.pulse}\n    ${R.SHADER_LINES.mix}\n    ${R.SHADER_LINES.main}\n    ${R.SHADER_LINES.bkg}\n    ${R.SHADER_LINES.blend}\n    }`;
   const f = R.patchShader(src, { front: true });
   const i = f.indexOf("ringmakerMask = "), j = f.indexOf("(vStates & 0x40U) != 0U");
   assert.ok(i > 0 && j > i, "pop-out branch after the ring-in-front blend");
@@ -271,4 +271,137 @@ test("menu preview layout follows the ring texture maths", () => {
   assert.ok(R.previewLayout({ band, size: 125 }).ring > R.previewLayout({ band, size: 50 }).ring);
   assert.equal(R.previewLayout({ band, size: 999 }).ring, R.previewLayout({ band, size: 125 }).ring, "size clamped");
   assert.equal(R.previewLayout({ band, scale: 0.5 }).art, Math.round(200 * R.CORE.subject * 0.5 * 10) / 10);
+});
+
+test("ringUpdate records a token whose ring was already on (Remove tracking regression)", () => {
+  // 1.3.0: a token with ring.enabled already true and scale 1 got no update at all, so Remove never listed it.
+  const u = R.ringUpdate(tok(true));
+  assert.deepEqual(u, { [`flags.${ID}.prior`]: { enabled: true, scale: 1, applied: 1 } }, "recorded, ring untouched");
+  assert.equal(R.ringUpdate(tok(true, 1, { enabled: true, scale: 1, applied: 1 })), null, "second pass: nothing to do");
+  const rev = R.cleanUpdate({ ...tok(true), flags: { [ID]: u[`flags.${ID}.prior`] && { prior: u[`flags.${ID}.prior`] } } });
+  assert.deepEqual(rev, { "ring.enabled": true, "ring.subject.scale": 1, [`flags.${ID}`]: null }, "Remove keeps the ring on and clears the flag");
+  const own = R.ringUpdate(tok(true, 1.2));
+  assert.deepEqual(own, { [`flags.${ID}.prior`]: { enabled: true, scale: 1.2, applied: null } }, "own scale kept, still recorded");
+  assert.equal(R.cleanUpdate({ ...tok(true, 1.2), flags: { [ID]: { prior: own[`flags.${ID}.prior`] } } })["ring.subject.scale"], undefined, "Remove leaves an own scale alone");
+});
+
+test("patchShader: ring effects and ring colour show on an image without a colour band", () => {
+  const src = `void x() {}\n    ${R.SHADER_LINES.pulse}\n    ${R.SHADER_LINES.mix}\n    ${R.SHADER_LINES.main}\n    ${R.SHADER_LINES.bkg}\n    ${R.SHADER_LINES.blend}\n    }`;
+  const f = R.patchShader(src, { front: true });
+  assert.ok(!f.includes(R.SHADER_LINES.pulse) && f.includes("(vRingColor == vec3(1.0)) ? tokenColor : vRingColor * redChannel"), "the image's own colour pulses when no ring colour is set");
+  assert.ok(!f.includes(R.SHADER_LINES.mix) && f.includes("hasState(STATE_RING_PULSE) || hasState(STATE_RING_GRADIENT) || (vRingColor != vec3(1.0))"), "band only mixed in with an effect or a colour");
+  assert.equal(R.patchShader(src.replace(R.SHADER_LINES.mix, "")), null, "changed core shader: not patched");
+});
+
+test("spritesheet JSON: the colour band covers the ring band, so effects have somewhere to show", async () => {
+  const j = await json("assets/token-ring.json");
+  const b = j.config.defaultColorBand;
+  assert.ok(b.startRadius > 0 && b.endRadius > b.startRadius && b.endRadius <= 1, "a real band");
+  assert.ok(b.startRadius <= R.CORE.subject + 0.02 && b.endRadius >= R.CORE_OUTER, "covers core's ring band (where the image's band is drawn)");
+});
+
+test("art zoom: flag, clamp, update and the shader adjustment", () => {
+  assert.equal(R.ARTZOOM, "artZoom");
+  assert.equal(R.clampZoom(0.1), 0.5); assert.equal(R.clampZoom(9), 3); assert.equal(R.clampZoom("x"), 1); assert.equal(R.clampZoom(1.234), 1.23); assert.equal(R.clampZoom(-2), 1);
+  assert.equal(R.artZoom(tok()), 1); assert.equal(R.artZoom({ flags: { [ID]: { artZoom: 0.8 } } }), 0.8); assert.equal(R.artZoom(null), 1);
+  assert.deepEqual(R.artZoomUpdate(tok(), 0.8), { [`flags.${ID}.artZoom`]: 0.8 });
+  assert.deepEqual(R.artZoomUpdate({ flags: { [ID]: { artZoom: 0.8 } } }, 1, { prefix: "prototypeToken." }), { [`prototypeToken.flags.${ID}.artZoom`]: null }, "1 clears the flag");
+  assert.deepEqual(R.artZoomUpdate({ flags: { [ID]: { artZoom: 0.8 } } }, null), { [`flags.${ID}.artZoom`]: null });
+  assert.equal(R.artZoomUpdate(tok(), 1), null, "nothing set, 1 asked: nothing to do");
+  assert.equal(R.artZoomUpdate({ flags: { [ID]: { artZoom: 0.8 } } }, 0.8), null, "already so");
+  const DEL = Symbol("del");
+  assert.equal(R.foundryDeletes([R.artZoomUpdate({ flags: { [ID]: { artZoom: 0.8 } } }, 1)], DEL)[0][`flags.${ID}.artZoom`], DEL, "deleted the Foundry way");
+  assert.equal(R.zoomAdjustment(1, 2), 0.5, "zoom 2: the shader samples half the image (art twice as big)");
+  assert.equal(R.zoomAdjustment(1.2, 0.5), 2.4); assert.equal(R.zoomAdjustment(undefined, 1), 1);
+  assert.equal(R.touchesArtZoom({ flags: { [ID]: { artZoom: 0.8 } } }), true);
+  assert.equal(R.touchesArtZoom({ flags: { [ID]: { popOut: true } } }), false);
+  assert.equal(R.touchesArtZoom({ flags: { [`-=${ID}`]: null } }), true, "namespace removed by Remove");
+  assert.equal(R.touchesPopOut({ flags: { [ID]: { artZoom: 0.8 } } }), false, "pop-out check doesn't fire for the zoom");
+  assert.deepEqual(R.cleanUpdate({ ring: { enabled: true }, flags: { [ID]: { artZoom: 0.8 } } }), { [`flags.${ID}`]: null }, "Remove clears the zoom with the rest");
+});
+
+test("art zoom: opaque radius and the fitting zoom", () => {
+  // A 64 px square image fully opaque to radius 20 px (of 32): reach 0.625.
+  const img = ringImage(64, 0, 20);
+  const reach = R.opaqueRadius(img, 64);
+  assert.ok(Math.abs(reach - 20.5 / 32) < 0.03, `reach ${reach}`);
+  assert.equal(R.opaqueRadius(new Uint8ClampedArray(16 * 16 * 4), 16), 0, "transparent image");
+  const full = R.opaqueRadius(ringImage(64, 0, 64), 64);
+  assert.ok(full > 1.35 && full <= 1.5, `square art reaches the corners (${full})`);
+  const L = R.ringLayout({ inner: 0.85, outer: 0.99 }, 100);
+  const z = R.fitZoom(reach, L, { shrinkOnly: false });
+  assert.ok(Math.abs(reach * z - L.bkgR) < 0.01, "the image's edge lands under the middle of the ring band");
+  assert.equal(R.fitZoom(full, L), R.clampZoom(L.bkgR / full), "square art is zoomed out so its corners land under the band");
+  assert.equal(R.fitZoom(0.4, L), 1, "shrink only by default: small art is left alone");
+  assert.ok(R.fitZoom(0.4, L, { shrinkOnly: false }) > 1, "asked for it: small art is zoomed in");
+  assert.equal(R.fitZoom(0, L), 1); assert.equal(R.fitZoom(0.5, null), 1);
+  assert.ok(Math.abs(R.fitZoom(0.5, L, { scaleCorrection: 0.8, adjustment: 1.2, shrinkOnly: false }) - R.clampZoom(L.bkgR * 1.2 / (0.5 * 0.8))) < 1e-9, "core's scale correction and texture adjustment taken into account");
+});
+
+test("ring class: configureSize applies the art zoom only with the setting on", () => {
+  class FakeRing { static effects = { ENABLED: 1 }; configureVisuals() { this.effects = 1; } configureSize() { this.textureScaleAdjustment = 1.5; } }
+  const On = R.popOutRingClass(FakeRing, { zoom: true });
+  const r = new On(); r.token = { document: { flags: { [ID]: { artZoom: 2 } } } }; r.configureSize({});
+  assert.equal(r.textureScaleAdjustment, 0.75, "core's adjustment divided by the zoom");
+  r.token.document.flags = {}; r.configureSize({}); assert.equal(r.textureScaleAdjustment, 1.5, "no zoom: core's value");
+  const Off = R.popOutRingClass(FakeRing);
+  const o = new Off(); o.token = { document: { flags: { [ID]: { artZoom: 2 } } } }; o.configureSize({});
+  assert.equal(o.textureScaleAdjustment, 1.5, "setting off: stored zooms ignored");
+});
+
+test("art zoom from the token config form: clamped, and 1 clears the flag", () => {
+  const DEL = Symbol("del");
+  const c1 = { flags: { [ID]: { artZoom: "0.734" } } };
+  assert.equal(R.tidyArtZoom(c1, tok(), DEL), true); assert.equal(c1.flags[ID].artZoom, 0.73);
+  const c2 = { flags: { [ID]: { artZoom: 1 } } };
+  R.tidyArtZoom(c2, { flags: { [ID]: { artZoom: 0.8 } } }, DEL); assert.equal(c2.flags[ID].artZoom, DEL, "1 on a token with a zoom: deleted (v14)");
+  const c3 = { flags: { [ID]: { artZoom: 1 } } };
+  R.tidyArtZoom(c3, { flags: { [ID]: { artZoom: 0.8 } } }, undefined); assert.deepEqual(c3.flags[ID], { "-=artZoom": null }, "older '-=' key");
+  const c4 = { flags: { [ID]: { artZoom: "1", popOut: true } } };
+  R.tidyArtZoom(c4, tok(), DEL); assert.deepEqual(c4.flags[ID], { popOut: true }, "1 on a token without a zoom: nothing stored");
+  assert.equal(R.tidyArtZoom({ flags: { [ID]: { popOut: true } } }, tok(), DEL), false);
+  assert.equal(R.tidyArtZoom({ x: 1 }, tok(), DEL), false); assert.equal(R.tidyArtZoom(null, tok(), DEL), false);
+  const c5 = { flags: { [ID]: { artZoom: DEL } } }; assert.equal(R.tidyArtZoom(c5, tok(), DEL), false, "a deletion is left alone");
+});
+
+test("art focus: flag, clamp, update and packing into the colour band attribute", () => {
+  assert.equal(R.ARTFOCUS, "artFocus");
+  assert.equal(R.clampFocus(-1), 0); assert.equal(R.clampFocus(2), 1); assert.equal(R.clampFocus("x"), 0.5); assert.equal(R.clampFocus(0.1234), 0.123);
+  assert.deepEqual(R.artFocus(tok()), { x: 0.5, y: 0.5 }); assert.deepEqual(R.artFocus({ flags: { [ID]: { artFocus: { x: 0.8, y: 0.5 } } } }), { x: 0.8, y: 0.5 });
+  assert.deepEqual(R.artFocusUpdate(tok(), { x: 0.8, y: 0.54 }), { [`flags.${ID}.artFocus`]: { x: 0.8, y: 0.54 } });
+  assert.deepEqual(R.artFocusUpdate({ flags: { [ID]: { artFocus: { x: 0.8, y: 0.5 } } } }, null, { prefix: "prototypeToken." }), { [`prototypeToken.flags.${ID}.artFocus`]: null }, "centre clears the flag");
+  assert.equal(R.artFocusUpdate(tok(), { x: 0.5, y: 0.5 }), null); assert.equal(R.artFocusUpdate({ flags: { [ID]: { artFocus: { x: 0.8, y: 0.5 } } } }, { x: 0.8, y: 0.5 }), null);
+  assert.equal(R.touchesArtZoom({ flags: { [ID]: { artFocus: { x: 1, y: 1 } } } }), true, "a focus change refreshes the size too");
+  // Packing: band + 2 × steps; the shader takes them apart again.
+  const v = R.packFocus(0.7, 0.82); const u = R.unpackFocus(v);
+  assert.ok(Math.abs(u.band - 0.7) < 1e-9 && Math.abs(u.focus - 0.82) < 1e-9, `round trip ${JSON.stringify(u)}`);
+  assert.deepEqual(R.unpackFocus(0.9), { band: 0.9, focus: 0 }, "a bare band reads as focus 0, so the shader side always packs");
+  const f32 = new Float32Array(2 * 21); f32[18] = 0.6; f32[19] = 0.8; f32[21 + 18] = 0.6; f32[21 + 19] = 0.8;
+  R.packFocusInto(f32, 0, 21, 18, 2, { x: 0.25, y: 0.75 });
+  assert.deepEqual([f32[18], f32[19], f32[39], f32[40]].map(x => Math.round(x * 1000) / 1000), [500.6, 1500.8, 500.6, 1500.8], "every vertex, the band kept");
+  const DEL = Symbol("del");
+  assert.equal(R.foundryDeletes([R.artFocusUpdate({ flags: { [ID]: { artFocus: { x: 0.8, y: 0.5 } } } }, null)], DEL)[0][`flags.${ID}.artFocus`], DEL);
+  const c = { flags: { [ID]: { artFocus: { x: "0.5", y: "0.5" } } } }; R.tidyArtZoom(c, { flags: { [ID]: { artFocus: { x: 0.8, y: 0.5 } } } }, DEL);
+  assert.equal(c.flags[ID].artFocus, DEL, "centre from the form deletes the flag");
+  const c2 = { flags: { [ID]: { artFocus: { x: "0.9" } } } }; R.tidyArtZoom(c2, { flags: { [ID]: { artFocus: { x: 0.8, y: 0.3 } } } }, DEL);
+  assert.deepEqual(c2.flags[ID].artFocus, { x: 0.9, y: 0.3 }, "one axis from the form keeps the other");
+});
+
+test("patchVertexShader: unpacks the focus from the band attribute and samples the art around it", () => {
+  const src = `void main() {\n      ${R.VERTEX_LINES.band}\n      ${R.VERTEX_LINES.coord}\n    }`;
+  const v = R.patchVertexShader(src);
+  assert.ok(v.includes("floor(aRingColorBand / 2.0)") && v.includes("ringmakerSteps / 1000.0"), "steps split off, divided by FOCUS_STEPS");
+  assert.ok(v.includes("vRingColorBand = aRingColorBand - ringmakerSteps * 2.0;"), "the band the fragment shader sees is the plain band");
+  assert.ok(v.includes("* aTextureScaleCorrection + ringmakerFocus;"), "art sampled around the focus");
+  assert.equal(R.patchVertexShader(src.replace(R.VERTEX_LINES.coord, "")), null); assert.equal(R.patchVertexShader(null), null);
+  assert.equal(R.FOCUS_STEPS, 1000);
+});
+
+test("ring class: configureSize records the focus for the shader", () => {
+  class FakeRing { static effects = { ENABLED: 1 }; configureVisuals() { } configureSize() { this.textureScaleAdjustment = 1; } }
+  const On = R.popOutRingClass(FakeRing, { zoom: true });
+  const r = new On(); r.token = { document: { flags: { [ID]: { artFocus: { x: 0.8, y: 0.54 } } } } }; r.configureSize({});
+  assert.deepEqual(r.artFocus, { x: 0.8, y: 0.54 });
+  const Off = R.popOutRingClass(FakeRing); const o = new Off(); o.token = r.token; o.configureSize({});
+  assert.equal(o.artFocus, undefined, "setting off: nothing recorded");
 });

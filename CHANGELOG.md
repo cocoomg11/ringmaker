@@ -2,6 +2,24 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.4.0
+
+Art framing per token (zoom and a focus point, with live preview), ring effects that actually show, and Remove that tracks every token.
+
+- **Art framing** (new, per token, GM): in the token configuration's Dynamic Token Ring section, **Zoom** (0.5–3; 1 is Foundry's framing) and **Focus X/Y** (the point of the image, 0–1 from the top left, drawn at the ring's centre: put it on the face) frame the art inside the ring without touching the image. The canvas token previews each change as you type, as Foundry's own token config does. **Fit** measures the image's opaque part and sets the zoom so cut-out art just fills the opening. Stored as `flags.ringmaker.artZoom` and `flags.ringmaker.artFocus` (zoom 1 and the centre clear them); **Remove Ringmaker's ring** deletes them with the rest. New world setting **Per-token art zoom** (on by default; off ignores the stored values and leaves the shader as in 1.3). API: `setArtFraming(tokens, { zoom, focus })`, `setArtZoom(tokens, zoom)`, `fitArt(tokens)`.
+- **Fixed: Ring effect on targeted tokens showed nothing.** Foundry draws its ring effects (pulse, gradient, flash colour) only inside the spritesheet's colour band, and tints that band with the ring colour times the image's red channel; Ringmaker's sheet had no colour band so the image kept its colours. The sheet now declares a band over the ring, and Ringmaker's shader uses the band only while an effect or a ring colour is active, with the image's own colour as the base, so the pulse darkens and brightens the ring image, the gradient sweeps it and a flash tints it, and the image is untouched otherwise.
+- **Fixed: Remove missed tokens whose ring was already on.** Apply recorded a token only when it changed something, so a token that already had `ring.enabled` (ringed by hand or by an earlier version) got no record and Remove never listed it. Apply now records every token it goes over; for those, Remove keeps the ring on (what was recorded) and clears Ringmaker's data.
+- `remove({ confirm: true })` asks first, with counts; plain `remove()` still asks nothing (the menu button always asks).
+- `setPopOut`, `setArtZoom`, `setArtFraming` and `fitArt` accept actors too (their prototype token), as well as placed tokens, token documents, prototype tokens and ids on the viewed scene.
+- A token config value of zoom 1 or focus 0.5/0.5 is stored as "no flag" rather than as the number (pre-update hooks).
+
+### Not yet tested live
+
+- The token config's Fit button and the live preview through Foundry's own preview token, from the real module (verified from a copy of the code injected into a v14 world; the form field, preview and reset on close worked there).
+- Art framing on Foundry v13 (the vertex shader line and the batch vertex layout were checked on v14 only; if the lines differ, focus is off with a console warning and zoom still works).
+- The target effect on the targeting player's client with the module installed (verified on the GM client with the patched shader injected; pulse brightness was measured changing over time, flash tinted the ring).
+- Remove on a world where 1.4.0 recorded already-ringed tokens: they keep their ring and lose `flags.ringmaker`.
+
 ## 1.3.0
 
 Remove cleans up fully, a live preview in the Ringmaker window, and an optional ring effect on targeted tokens.

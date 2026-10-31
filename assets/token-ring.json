@@ -27,6 +27,6 @@
     "scale": "1"
   },
   "config": {
-    "defaultColorBand": { "startRadius": 0, "endRadius": 0 }
+    "defaultColorBand": { "startRadius": 0.6, "endRadius": 1 }
   }
 }

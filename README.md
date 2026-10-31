@@ -27,7 +27,7 @@ Then enable **Ringmaker** in your world.
 - **256 × 256 or larger** (512 × 512 is ideal). Other sizes are scaled to fit; non-square images are centred.
 - **Any band width and margin.** Ringmaker finds the ring band from the image's transparency (pixels at least half opaque; a soft drop shadow is ignored) and scales the image so the band's outer edge lands where Foundry's own ring edge is. Ringed tokens are then the same size as with Foundry's rings; **Ring size** fine-tunes it.
 - **A background** is drawn behind the token art, filling the ring's opening (see **Background colour**).
-- The image keeps its own colours: Ringmaker turns Foundry's tinted colour band off.
+- The image keeps its own colours: Ringmaker only tints the ring band while a ring effect (targeting pulse, gradient, flash) or a token's own ring colour is active.
 - No image is included; bring your own. While no image is chosen, Ringmaker registers nothing and Foundry's own ring is left alone.
 
 **One ring style per world.** Foundry's dynamic rings use a single ring style for the whole world, so every token with its ring turned on, including ones you turned on yourself, shows Ringmaker's ring while an image is set.
@@ -45,12 +45,25 @@ All in **Game Settings › Configure Settings › Ringmaker** (world settings, G
 | Background colour | `#2b2420` | The colour behind the token art inside the ring. A token's own ring background colour (Token configuration › Appearance) is used instead when it has one. Reloads Foundry. |
 | Ring in front of token art | on | Draws the ring over the token art and trims the art to the ring's opening. Off: Foundry's own order (art over the ring, so cut-out art can reach past it). Reloads Foundry. |
 | Token art size inside the ring | 1 | Foundry's ring subject scale on the tokens Ringmaker rings. 1 keeps the ring at its normal size; below 1 the ring grows around the art, above 1 it shrinks. A scale you set on a token yourself is kept. |
+| Per-token art zoom | on | Lets each token have its own art framing (zoom and focus point, see below). Off ignores stored framings. Reloads Foundry. |
 | Ring effect on targeted tokens | Off | *Off*, *Pulse*, *Gradient* or *Flash once*. See below. Reloads Foundry. |
 | Ring existing tokens on load | off | Each time the world loads, the active GM rings any matching token that doesn't have the ring yet. |
 
 ### Art that breaks out of the ring
 
 For cut-out token art (say a dragon whose head and wings reach past a round frame), tick **Let art break out of the ring** in the token's configuration (Appearance › Dynamic Token Ring; GM only, placed or prototype tokens). Art outside the ring's opening is then drawn over the ring instead of trimmed, so the parts that reach past it show in front of the ring; art inside the opening stays under the ring as usual. Give the art a transparent background and keep its own disc inside the ring's opening (about two thirds of the image's width, centred). Other tokens aren't affected. It needs **Ring in front of token art**; with that off, every token's art is already drawn over the ring. The choice is kept in `flags.ringmaker.popOut`.
+
+### Art framing: zoom and focus per token
+
+Token art is often framed for a square, not for a ring: a face off-centre, or a big creature where the head is one corner of the picture. In the token's configuration (Appearance › Dynamic Token Ring, GM only, placed or prototype tokens) the **Art framing** row sets, for that token only:
+
+- **Zoom**: how big the art is inside the ring. 1 is Foundry's framing; above 1 zooms in (crops the background away), below 1 shows more of the image.
+- **Focus X / Y**: the point of the image (0–1 from the top left) that is drawn at the ring's centre. Put it on the face: 0.5 / 0.5 is the image's centre.
+- **Fit**: measures the image's transparent margin and sets the zoom so cut-out art just fills the ring's opening.
+
+The token on the canvas follows each change before you save, as Foundry's own token configuration does. The image itself is never changed. Stored as `flags.ringmaker.artZoom` and `flags.ringmaker.artFocus`; zoom 1 and focus 0.5 / 0.5 clear them, and **Remove Ringmaker's ring** deletes them. The world setting **Per-token art zoom** turns the feature off (stored values are then ignored).
+
+A good target, from portraits that frame well: the face about 40–50 % of the ring's opening wide, eyes a little above the centre, shoulders or the creature's neck and action filling the rest, background mostly cropped away.
 
 ### Ring effect on targeted tokens
 
@@ -84,6 +97,10 @@ await rm.remove();               // active GM: undo Ringmaker's changes
 rm.status();                     // { image, mode, scale, size, background, front, targetEffect, shader, band, registered, active, error }
 await rm.setPopOut(tokens, true); // GM: let these tokens' art break out of the ring (false turns it off)
 rm.removePlan();                 // { actors, tokens } that Remove would change, without changing anything
+await rm.remove({ confirm: true }); // same as remove(), but asks first with counts
+await rm.setArtFraming(tokens, { zoom: 1.3, focus: { x: 0.55, y: 0.6 } }); // GM: art zoom and focus (either part may be left out)
+await rm.setArtZoom(tokens, 1.3); // GM: zoom only (1 clears it)
+await rm.fitArt(tokens);          // GM: measure each image and set the zoom that fills the opening
 ```
 
 | Member | Stability | Notes |
@@ -93,16 +110,22 @@ rm.removePlan();                 // { actors, tokens } that Remove would change,
 | `remove()` | stable | active GM only; from 1.3 also deletes every Ringmaker flag |
 | `status()` | stable | `targetEffect` added in 1.3 |
 | `setPopOut(tokens, on)` | experimental | new in 1.2; GM only |
-| `removePlan()` | experimental | new in 1.3 | Ringmaker fires no hooks of its own and listens only to Foundry's.
+| `removePlan()` | experimental | new in 1.3 |
+| `setArtFraming(tokens, { zoom, focus })` | experimental | new in 1.4; GM only |
+| `setArtZoom(tokens, zoom)` | experimental | new in 1.4; GM only |
+| `fitArt(tokens)` | experimental | new in 1.4; GM only |
+
+`tokens` is one or a list of placed tokens, token documents, prototype tokens, actors (their prototype token) or token ids on the viewed scene. `remove({ confirm })` is new in 1.4. Ringmaker fires no hooks of its own and listens only to Foundry's.
 
 ## Data Ringmaker writes
 
 Only under its own namespace, and only when you apply the ring or tick pop-out:
 
-- `flags.ringmaker.prior` on tokens and actor prototype tokens: what the token's ring had before (`{ enabled, scale, applied }`). **Remove Ringmaker's ring** restores it and deletes this flag.
+- `flags.ringmaker.prior` on tokens and actor prototype tokens: what the token's ring had before (`{ enabled, scale, applied }`), written for every token Apply goes over (from 1.4 also for tokens whose ring was already on). **Remove Ringmaker's ring** restores it and deletes this flag.
+- `flags.ringmaker.artZoom` (number) and `flags.ringmaker.artFocus` (`{ x, y }`) on tokens and prototype tokens: the art framing (from 1.4). **Remove Ringmaker's ring** deletes them; zoom 1 or focus 0.5 / 0.5 in the token configuration clears them too.
 - `flags.ringmaker.popOut` (boolean) on tokens and prototype tokens: the pop-out checkbox. **Remove Ringmaker's ring** deletes it (from 1.3); you can also untick the box or run `await rm.setPopOut(tokens, false)`. It does nothing while no ring image is set.
 - Remove deletes the whole `flags.ringmaker` namespace on each token and prototype token it touches, so nothing of Ringmaker's is left on them.
-- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, ring effect on targeted tokens, ring existing on load).
+- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, ring existing on load).
 - The target effect writes nothing: it is drawn on each client only. They are removed from the world with the module's data, not by Remove.
 - Ringmaker also sets Foundry's own `ring.enabled` and `ring.subject.scale` on tokens it rings; Remove puts them back.
 

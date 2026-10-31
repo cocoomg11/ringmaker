@@ -1,18 +1,22 @@
 /**
  * Ringmaker entry point: settings, the settings menu, the API and the hooks.
- * API: game.modules.get("ringmaker").api = { applyAll({ npcOnly }), remove(), removePlan(), plan({ npcOnly }), status(), setPopOut(tokens, on) }.
- * applyAll and remove are active GM only; setPopOut is GM only.
+ * API: game.modules.get("ringmaker").api = { applyAll({ npcOnly }), remove({ confirm }), removePlan(), plan({ npcOnly }), status(),
+ * setPopOut(tokens, on), setArtZoom(tokens, zoom), setArtFraming(tokens, { zoom, focus }), fitArt(tokens) }.
+ * applyAll and remove are active GM only; setPopOut, setArtZoom, setArtFraming and fitArt are GM only. remove() asks nothing unless { confirm: true }.
  */
 import * as Ring from "./ring.mjs";
 import { RingmakerMenu } from "./menu.mjs";
 
 export const API = {
   applyAll: (opts = {}) => Ring.applyAll(opts),
-  remove: () => Ring.remove(),
+  remove: (opts = {}) => Ring.remove(opts),
   removePlan: () => Ring.removePlan(),
   plan: (opts = {}) => { const p = Ring.plan(opts); return { actors: p.actors.length, tokens: p.tokens }; },
   status: () => Ring.status(),
-  setPopOut: (tokens, on = true) => Ring.setPopOut(tokens, on)
+  setPopOut: (tokens, on = true) => Ring.setPopOut(tokens, on),
+  setArtZoom: (tokens, zoom = 1) => Ring.setArtZoom(tokens, zoom),
+  setArtFraming: (tokens, framing = {}) => Ring.setArtFraming(tokens, framing),
+  fitArt: tokens => Ring.fitArt(tokens)
 };
 
 Hooks.once("init", () => {

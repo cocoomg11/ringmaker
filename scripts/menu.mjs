@@ -51,7 +51,7 @@ export class RingmakerMenu extends foundry.applications.api.ApplicationV2 {
         <button type="button" data-action="apply" ${st.image ? gm : "disabled"}><i class="fa-solid fa-circle-notch"></i> Apply ring to existing tokens</button>
         <button type="button" data-action="remove" ${gm}><i class="fa-solid fa-eraser"></i> Remove Ringmaker's ring</button>
       </div>
-      <p class="hint" style="margin-top:0.5rem">Apply turns the ring on (and moves tokens still at an art size Ringmaker set earlier to the current setting) for the prototype tokens of matching actors and every matching token on every scene. Remove puts back what each token had before and deletes Ringmaker's flags on it (recorded values, pop-out). Token art and portraits are never changed.</p>
+      <p class="hint" style="margin-top:0.5rem">Apply turns the ring on (and moves tokens still at an art size Ringmaker set earlier to the current setting) for the prototype tokens of matching actors and every matching token on every scene. Remove puts back what each token had before and deletes Ringmaker's flags on it (recorded values, pop-out, art framing). Token art and portraits are never changed.</p>
     </section>`;
   }
 
@@ -100,7 +100,7 @@ export class RingmakerMenu extends foundry.applications.api.ApplicationV2 {
   static async #remove(event, btn) {
     const rp = Ring.removePlan();
     if (!rp.actors && !rp.tokens) return ui.notifications.info("Ringmaker: no token or prototype token has Ringmaker's ring or data.");
-    const ok = await confirm("Remove Ringmaker's ring", `<p>${plural(rp.actors, "actor prototype token")} and ${plural(rp.tokens, "placed token")}.</p><p>Put every token and prototype token Ringmaker ringed back the way it was, and delete Ringmaker's data on them (the recorded ring values and the pop-out choice)?</p><p class="hint">Tokens whose ring you turned on yourself keep their ring.</p>`);
+    const ok = await confirm("Remove Ringmaker's ring", `<p>${plural(rp.actors, "actor prototype token")} and ${plural(rp.tokens, "placed token")}.</p><p>Put every token and prototype token Ringmaker ringed back the way it was, and delete Ringmaker's data on them (the recorded ring values, the pop-out choice and the art framing)?</p><p class="hint">Tokens whose ring you turned on yourself keep their ring.</p>`);
     if (!ok) return;
     btn.disabled = true;
     try { await Ring.remove(); } finally { this.render(); }
