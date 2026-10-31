@@ -14,6 +14,7 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **Prior state:** what a token had before is stored in `flags.ringmaker.prior`, so Remove restores it. Per-token pop-out is `flags.ringmaker.popOut` (checkbox in the token config, GM only).
 - **NPC test:** actor type not "character" and no player owner (system-agnostic). No image set means the module does nothing.
 - **Shader patch:** the ring-in-front shader falls back to the core shader if the core source changes. Check this on each Foundry release.
+- **Token config checkbox:** `configSource(app)` (pure, tested) finds the token data being edited (placed token, prototype token, or an actor's prototype token) so the pop-out box is ticked correctly. The exact app property names in v14 still need a live check.
 - **Active-GM writes:** automatic changes (ringing existing tokens at load) run only on the active GM's client (`gm.mjs`). `applyAll` and `remove` are active-GM only; `setPopOut` is GM only.
 - **API:** `{ applyAll({ npcOnly }), remove(), plan({ npcOnly }), status(), setPopOut(tokens, on) }`.
 - No feature registry, health check or update-notes card here; the module is small and every behaviour is a setting.

@@ -2,6 +2,13 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.2.1
+
+Fixes found in a code review of 1.2.0 (not yet tested in a live world).
+
+- **Pop-out checkbox could show unticked when it was set.** The token configuration now finds the token's data more carefully (placed token, prototype token, or a window that hands over the actor), so the box reflects the saved setting.
+- A large **Ring size** can no longer let the ring image spill into the background part of the ring texture.
+
 ## 1.2.0
 
 Token art can break out of the ring.

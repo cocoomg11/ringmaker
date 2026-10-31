@@ -177,3 +177,14 @@ test("patchShader: pop-out tokens get the art outside the background disc over t
   assert.match(f.slice(j), /blendedResult = blend\(processedColor \* \(1\.0 - ringmakerMask\), blendedResult\);/, 'only art outside the disc goes over the ring');
   assert.equal(R.patchShader(src, { front: false }).includes("0x40U"), false, "ring behind: core's order for every token already");
 });
+
+test("configSource: finds the token data for placed tokens, prototype tokens and actor-handed windows", () => {
+  const src = { flags: { [ID]: { popOut: true } }, ring: { enabled: true } };
+  assert.equal(R.isPopOut(R.configSource({ document: { _source: src, actorId: "a" } })), true, "placed token via document");
+  assert.equal(R.isPopOut(R.configSource({ token: { _source: src } })), true, "via token");
+  assert.equal(R.isPopOut(R.configSource({ document: { documentName: "Actor", prototypeToken: { _source: src } } })), true, "actor -> prototype token");
+  assert.equal(R.isPopOut(R.configSource({ document: { documentName: "Actor", prototypeToken: { _source: src } }, actor: null })), true);
+  assert.equal(R.isPopOut(R.configSource({ document: { _source: { flags: {} } } })), false);
+  assert.equal(R.configSource({}), null);
+  assert.equal(R.isPopOut(R.configSource({ document: { flags: { [ID]: { popOut: true } } } })), true, "live document without _source");
+});

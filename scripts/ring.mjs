@@ -163,6 +163,21 @@ export function ringRevert(src, { prefix = "" } = {}) {
 /** Whether a token (or prototype token) source has pop-out on. */
 export const isPopOut = src => src?.flags?.[ID]?.[POPOUT] === true;
 
+/**
+ * The token data a token configuration window is editing: a placed token, a prototype token, or (if a window hands over the actor)
+ * the actor's prototype token. Returns the source object, falling back to the live document, or null when none is found.
+ */
+export function configSource(app) {
+  const cands = [app?.token, app?.document, app?.options?.document, app?.object, app?.prototype, app?.actor];
+  for (let d of cands) {
+    if (!d) continue;
+    if (d.documentName === "Actor" || (d.prototypeToken && !d.ring && !("actorId" in d))) d = d.prototypeToken;
+    const src = d?._source ?? d;
+    if (src && typeof src === "object" && (src.flags !== undefined || src.ring !== undefined)) return src;
+  }
+  return null;
+}
+
 /** Ring effects with the pop-out state bit set or cleared. */
 export function popOutEffects(effects, on) {
   const e = Number(effects) >>> 0;
@@ -287,8 +302,7 @@ export function addPopOutField(app, element) {
   const root = element instanceof HTMLElement ? element : element?.[0]; if (!root) return;
   const enabled = root.querySelector('[name="ring.enabled"]'); const group = enabled?.closest(".form-group");
   if (!group || root.querySelector(`[name="flags.${ID}.${POPOUT}"]`)) return;
-  const doc = app.document ?? app.token ?? app.options?.document ?? null;
-  const on = isPopOut(doc?._source ?? doc);
+  const on = isPopOut(configSource(app));
   const id = `${app.id}-${ID}-${POPOUT}`;
   const div = document.createElement("div"); div.className = "form-group";
   div.innerHTML = `<label for="${id}">Let art break out of the ring</label><div class="form-fields"><input type="checkbox" id="${id}" name="flags.${ID}.${POPOUT}" ${on ? "checked" : ""}></div>`
@@ -325,7 +339,9 @@ async function draw(el) {
   band = measureRing(radialProfile(sctx.getImageData(0, 0, FRAME, FRAME).data, FRAME));
   const L = ringLayout(band, size()); const d = FRAME * L.scale;
   const ctx = el.getContext("2d"); ctx.clearRect(0, 0, el.width, el.height);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, FRAME, FRAME); ctx.clip(); // a large ring must not spill into the background frame
   ctx.drawImage(sq, (FRAME - d) / 2, (FRAME - d) / 2, d, d); // ring frame
+  ctx.restore();
   ctx.fillStyle = bg(); ctx.beginPath(); ctx.arc(FRAME * 1.5, FRAME / 2, L.bkgR * FRAME / 2, 0, Math.PI * 2); ctx.fill(); // background frame
   texture.baseTexture.update();
   loadError = band ? null : "no ring band found in the image (it needs a transparent middle); drawn to fit the frame";
