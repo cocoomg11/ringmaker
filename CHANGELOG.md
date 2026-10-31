@@ -2,6 +2,10 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## Unreleased
+
+- No behaviour change. The release workflow now stops early if the release tag isn't `vMAJOR.MINOR.PATCH`. The token-update hook returns immediately for updates that don't touch Ringmaker's flags, and the pop-out ring class skips a redundant write. README now documents the flags Ringmaker writes, how to remove them, and the API's stability.
+
 ## 1.2.2
 
 - **Fixed: tokens didn't draw on Foundry v14.** With a ring image set, every scene load failed with "Cannot write private member #ringData" and no tokens were drawn. Foundry's token ring class keeps its ring data in a private static field, which its own static methods can't reach when they're called on a subclass (Ringmaker's pop-out ring class). Ringmaker's class now runs those methods on Foundry's own class, so the canvas draws normally and pop-out keeps working. If the ring class can't be adapted, pop-out is turned off and Foundry's own class is used.

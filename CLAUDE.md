@@ -20,6 +20,16 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **API:** `{ applyAll({ npcOnly }), remove(), plan({ npcOnly }), status(), setPopOut(tokens, on) }`.
 - No feature registry, health check or update-notes card here; the module is small and every behaviour is a setting.
 
+## House practices
+- **Tag format:** releases are tagged `vMAJOR.MINOR.PATCH`; the release workflow fails early on anything else.
+- **Compatibility:** `module.json` `compatibility` has `minimum` and `verified` set honestly (13 / 14). No `relationships.systems`: the module is system-agnostic.
+- **Hooks:** hot hooks (token updates, refreshes, draws) bail out on the first line for tokens or changes they don't handle. Build textures once (the ring texture is drawn once at setup) and never reload or redraw per refresh or per frame.
+- **Flags and settings:** write only under `flags.ringmaker.*` and the `ringmaker` settings namespace. Document each one in the README ("Data Ringmaker writes") and keep a way to remove it, or document how.
+- **Cross-module:** talk to other modules only through their public APIs or hooks; never reach into their internals.
+- **Cleanup:** Remove restores what Ringmaker changed; anything it leaves behind must be documented.
+- **API docs:** every public API member is listed in the README, marked stable or experimental. Update it with the code.
+- **Releases:** end with a live checklist (what needs a live Foundry world to verify) in the changelog or handoff.
+
 ## Tests
 - `npm test` = `node --test` (`tests/ring.test.mjs`); `npm run check` syntax-checks scripts. CI (`test.yml`) runs them, and the release workflow runs them again.
 - Pure and tested: geometry, plan/prior-state logic, migrations, active-GM pick. The shader patch, canvas texture, token config UI and menu need a live Foundry world and are untested in Node.

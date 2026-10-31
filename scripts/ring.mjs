@@ -263,6 +263,7 @@ export function init() {
   });
   // Pop-out turned on or off: the ring's state bits are worked out again (configureVisuals).
   Hooks.on("updateToken", (doc, changed) => {
+    if (!changed?.flags?.[ID] && !changed?.flags?.[`-=${ID}`]) return; // not our flags: nothing to do (this hook fires on every token update)
     if (!foundry.utils.hasProperty(changed, `flags.${ID}.${POPOUT}`) && !foundry.utils.hasProperty(changed, `flags.${ID}.-=${POPOUT}`)) return;
     const t = doc.object; if (t?.hasDynamicRing) { t.ring.configureVisuals(); t.renderFlags.set({ refreshRingVisuals: true }); }
   });
@@ -311,8 +312,9 @@ export function popOutRingClass(Core = foundry.canvas?.placeables?.tokens?.Token
   if (!Core) return null;
   const Sub = class RingmakerTokenRing extends Core {
     configureVisuals() {
-      super.configureVisuals();
-      this.effects = popOutEffects(this.effects, isPopOut(this.token?.document));
+      super.configureVisuals(); // runs when a ring is set up or its visuals change, not per frame
+      const e = popOutEffects(this.effects, isPopOut(this.token?.document));
+      if (e !== this.effects) this.effects = e;
     }
   };
   try { forwardPrivateStatics(Sub, Core); } catch (e) {

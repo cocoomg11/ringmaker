@@ -75,6 +75,17 @@ rm.status();                     // { image, mode, scale, size, background, fron
 await rm.setPopOut(tokens, true); // GM: let these tokens' art break out of the ring (false turns it off)
 ```
 
+Stability: `plan`, `applyAll`, `remove` and `status` are **stable**; `setPopOut` is **experimental** (new in 1.2). Ringmaker fires no hooks of its own and listens only to Foundry's.
+
+## Data Ringmaker writes
+
+Only under its own namespace, and only when you apply the ring or tick pop-out:
+
+- `flags.ringmaker.prior` on tokens and actor prototype tokens: what the token's ring had before (`{ enabled, scale, applied }`). **Remove Ringmaker's ring** restores it and deletes this flag.
+- `flags.ringmaker.popOut` (boolean) on tokens and prototype tokens: the pop-out checkbox. Remove does not clear it; untick the box or run `await rm.setPopOut(tokens, false)`. It does nothing while no ring image is set.
+- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, ring existing on load). They are removed from the world with the module's data, not by Remove.
+- Ringmaker also sets Foundry's own `ring.enabled` and `ring.subject.scale` on tokens it rings; Remove puts them back.
+
 ## About
 
 Made for my own table and shared in case it's useful to yours. Issues and suggestions are welcome at <https://github.com/cocoomg11/ringmaker/issues>.
