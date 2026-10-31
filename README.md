@@ -21,16 +21,89 @@ Then enable **Ringmaker** in your world.
 - Foundry VTT v13 and v14 (verified on v14).
 - Any game system.
 
-## The ring image
+## Making a ring image
 
-- A **square PNG with a transparent middle**: the token art shows through the hole.
-- **256 × 256 or larger** (512 × 512 is ideal). Other sizes are scaled to fit; non-square images are centred.
-- **Any band width and margin.** Ringmaker finds the ring band from the image's transparency (pixels at least half opaque; a soft drop shadow is ignored) and scales the image so the band's outer edge lands where Foundry's own ring edge is. Ringed tokens are then the same size as with Foundry's rings; **Ring size** fine-tunes it.
-- **A background** is drawn behind the token art, filling the ring's opening (see **Background colour**).
-- The image keeps its own colours: Ringmaker only tints the ring band while a ring effect (targeting pulse, gradient, flash) or a token's own ring colour is active.
-- No image is included; bring your own. While no image is chosen, Ringmaker registers nothing and Foundry's own ring is left alone.
+Ringmaker needs one picture: the ring itself, with a see-through middle. The token art shows through the hole.
 
-**One ring style per world.** Foundry's dynamic rings use a single ring style for the whole world, so every token with its ring turned on, including ones you turned on yourself, shows Ringmaker's ring while an image is set.
+### Requirements
+
+| | What to use | Why |
+| --- | --- | --- |
+| **Format** | PNG or WebP **with transparency** (alpha) | Ringmaker finds the ring from the image's transparency. A JPG has no transparency, so the whole square (corners and middle) covers the token. |
+| **Shape** | Square, ring centred | Other shapes work (the image is scaled to fit and centred, e.g. 600 × 512), but the ring's centre must be the image's centre. |
+| **Size** | 512 × 512 recommended; 256 × 256 or larger | Every image is redrawn into a 512 × 512 frame. Bigger (up to 2048) works but adds no detail; 128 works but looks soft on big tokens. |
+| **Middle** | Fully transparent | A filled-in centre (even dark grey) means no ring is found: the image is drawn over the art and hides it. |
+| **Band** | Any width, solid (at least half opaque) | The band is the area that is at least half opaque, measured from the centre outwards. Thin and thick bands both work. |
+| **Margin** | Any; a small margin is fine | The band's outer edge is scaled to where Foundry's own ring edge is, so the empty margin around it doesn't matter. |
+| **Decorations** | Spikes, gems, studs: fine | Thin points (spikes) are less than half opaque on average around the circle, so they don't count as the band and simply stick out past it. Keep them inside the image; anything past the frame edge is cut off, more so with **Ring size** above 100 %. |
+| **Shadows** | Soft drop shadows are fine | Pixels less than half opaque are ignored when measuring. |
+| **Colours** | Any; the image keeps its own colours | It's only tinted while a ring colour or ring effect is active (see below). |
+
+How it measures: Ringmaker averages the transparency in circles from the centre out. The **outer edge** is the last circle that is at least half opaque; the **inner edge** (the hole) is where that solid band starts going inwards. The image is then scaled so the outer edge sits where Foundry's own ring edge is (× **Ring size**), and a **background disc** is drawn under the art out to the middle of the band. With **Ring in front of token art** on, the art is trimmed to that disc, so the art's edge is hidden under the ring.
+
+### Step by step
+
+1. **Make the image.** Any image editor: a 512 × 512 transparent canvas, the ring centred and touching (or nearly touching) the edges, the middle erased to fully transparent. Export as PNG.
+2. **Upload it** to your Foundry data (for example with the file picker's upload button) into any folder you like.
+3. **Set it.** *Game Settings › Configure Settings › Ringmaker › Ring image*, pick the file, save. Foundry reloads.
+4. **Check it.** *Open Ringmaker* shows the ring over a sample picture. If it says **Couldn't load it: no ring band found**, the image has no transparent middle (see Troubleshooting). Look at a few placed tokens too: a cut-out creature and a full square portrait.
+5. **Tune it** in *Open Ringmaker* (preview first, then **Save and reload**):
+   - **Ring size**: the whole ring (and the art inside) bigger or smaller than Foundry's rings, 50–125 %.
+   - **Ring in front of token art**: on trims the art to the ring's opening (tidy for square portraits); off is Foundry's order, so cut-out art can reach over the ring.
+   - **Background colour**: what shows behind cut-out art inside the ring.
+
+## Framing token art
+
+Most token art is framed for a square, so inside a round ring a face can be off-centre or too small. Each token can have its own framing (token configuration › Appearance › Dynamic Token Ring › **Art framing**, GM only). The token on the canvas updates as you type; the image file is never changed.
+
+| Field | What it does | Range |
+| --- | --- | --- |
+| **Zoom** | 1 is Foundry's framing. Above 1 zooms in (crops the background), below 1 shows more of the picture. | 0.5–3 |
+| **Focus X / Y** | The point of the picture drawn at the ring's centre, from the top left (0, 0) to the bottom right (1, 1). 0.5 / 0.5 is the middle. | 0–1 |
+| **Fit** | Measures the transparent edge of cut-out art and sets the zoom so the figure just fills the ring's opening. Does nothing useful on a full square picture (it has no transparent edge). | |
+
+Examples:
+
+- **A head-and-shoulders portrait** with the face in the upper middle: Zoom 1.2, Focus 0.5 / 0.4.
+- **A face on the left of the picture**: Zoom 1.3, Focus 0.35 / 0.4.
+- **A big creature whose head is in one corner** (say top right): Zoom 2–2.5, Focus on the head, e.g. 0.7 / 0.3.
+- **A small cut-out figure with lots of empty space around it**: press **Fit**.
+
+A good target: the face about 40–50 % of the ring's opening wide, eyes a little above the centre, shoulders or the creature's neck filling the rest. Zoom 1 and focus 0.5 / 0.5 store nothing. For several tokens at once use the API (`setArtFraming`, `fitArt`).
+
+## Works with Foundry's ring options
+
+Tested on Foundry v14 with Ringmaker's ring in front of the art (the default).
+
+| Foundry option (token configuration or world setting) | With Ringmaker |
+| --- | --- |
+| **Ring colour** (tint) | Works. The band is tinted with the colour × the image's red channel, so on a dark or blue-ish ring the tint is darker. Only the part of the band outside 60 % of the frame's radius is tinted (see Troubleshooting). White means "no tint". |
+| **Background colour** | Works: replaces Ringmaker's background colour for that token. White (`#ffffff`) counts as "not set", so it shows the world background colour instead. |
+| **Subject texture** (a separate image for the ring) | Works: Foundry draws the subject texture instead of the token image, and Zoom / Focus apply to it. **Fit** measures the token image, not the subject texture. |
+| **Subject scale** | Works, and combines with Zoom (they multiply). A scale you set yourself is kept by Apply and Remove. |
+| **Effects: Pulse, Gradient** | Work: the ring image itself pulses or sweeps. |
+| **Effects: Background wave** | Works on the background disc. |
+| **Effects: Invisibility** | Works (Foundry's own invisibility tint). |
+| **World setting "Dynamic token ring" style** | Overridden while a ring image is set: every ringed token, player characters included, shows Ringmaker's ring. Foundry's styles can't be used at the same time; clear the ring image to go back to them. |
+| **Token sizes 1×1 to 4×4** | Work; the ring scales with the token. |
+| **Non-square tokens (e.g. 2×1)** | The ring stays round and is sized to the smaller side, as Foundry's own rings. |
+| **Fit modes (cover, fill, …), Scale X/Y, mirroring** | Work as with Foundry's rings: the ring grows with the scale, mirroring flips the art only. |
+
+## Troubleshooting
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| The ring covers the whole token (a filled disc or square) and *Open Ringmaker* says **no ring band found** | The image has no transparent middle (a filled centre, or a JPG) | Erase the middle to full transparency and save as PNG or WebP. |
+| A white or coloured square around the ring | The image's corners aren't transparent (JPG, or a background layer left on) | Delete the background layer; export PNG with transparency. |
+| The ring is much smaller or bigger than Foundry's rings | A faint ring (less than half opaque) or a solid shape far outside it is being measured as the band | Make the band solid; keep outer decorations thin (spikes) or partly transparent; adjust **Ring size**. |
+| Gems or spikes are cut off at the edge | They reach past the image frame, or **Ring size** is above 100 % | Leave a little margin in the image, or lower **Ring size**. |
+| A ring colour or the pulse only tints the outer part of a very thick band | Foundry tints only a fixed colour band (60–100 % of the frame's radius) | Use a thinner band, or accept the untinted inner part. |
+| Lots of background shows around the art inside a thin ring | A thin band leaves a large opening, and Foundry sizes the art for its own ring | Raise **Zoom** on those tokens (or **Ring size**). |
+| A token shows Foundry's steel or bronze ring instead | No ring image is set, or it failed to load | Set the image; check *Open Ringmaker* for an error. |
+| Art reaches over the ring | **Let art break out of the ring** is ticked on that token, or **Ring in front of token art** is off | Untick it, or turn the setting on. |
+| I changed the image and nothing happened | Changing the ring image reloads Foundry; other players see it after their next reload | Ask players to reload (F5). |
+
+**One ring style per world.** Foundry's dynamic rings use a single ring style for the whole world, so every token with its ring turned on, including ones you turned on yourself, shows Ringmaker's ring while an image is set. No image is included; while none is chosen, Ringmaker registers nothing and Foundry's own ring is left alone.
 
 ## Settings
 
@@ -55,15 +128,7 @@ For cut-out token art (say a dragon whose head and wings reach past a round fram
 
 ### Art framing: zoom and focus per token
 
-Token art is often framed for a square, not for a ring: a face off-centre, or a big creature where the head is one corner of the picture. In the token's configuration (Appearance › Dynamic Token Ring, GM only, placed or prototype tokens) the **Art framing** row sets, for that token only:
-
-- **Zoom**: how big the art is inside the ring. 1 is Foundry's framing; above 1 zooms in (crops the background away), below 1 shows more of the image.
-- **Focus X / Y**: the point of the image (0–1 from the top left) that is drawn at the ring's centre. Put it on the face: 0.5 / 0.5 is the image's centre.
-- **Fit**: measures the image's transparent margin and sets the zoom so cut-out art just fills the ring's opening.
-
-The token on the canvas follows each change before you save, as Foundry's own token configuration does. The image itself is never changed. Stored as `flags.ringmaker.artZoom` and `flags.ringmaker.artFocus`; zoom 1 and focus 0.5 / 0.5 clear them, and **Remove Ringmaker's ring** deletes them. The world setting **Per-token art zoom** turns the feature off (stored values are then ignored).
-
-A good target, from portraits that frame well: the face about 40–50 % of the ring's opening wide, eyes a little above the centre, shoulders or the creature's neck and action filling the rest, background mostly cropped away.
+See [Framing token art](#framing-token-art). Stored as `flags.ringmaker.artZoom` and `flags.ringmaker.artFocus`; zoom 1 and focus 0.5 / 0.5 clear them, and **Remove Ringmaker's ring** deletes them. The world setting **Per-token art zoom** turns the feature off (stored values are then ignored).
 
 ### Ring effect on targeted tokens
 
