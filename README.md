@@ -12,27 +12,32 @@ Pick one ring image and Ringmaker registers it as a dynamic ring style, so Found
 
 Token art and actor portraits are never changed, and **Remove Ringmaker's ring** puts back exactly what each token had before.
 
-Works with any game system.
-
 <!-- screenshot: a scene with several NPC tokens wearing the custom ring -->
 
-## Contents
+## Requirements
 
-- [Install](#install) · [Quick start](#quick-start) · [Compatibility](#compatibility)
-- [Making a ring image](#making-a-ring-image) · [Framing token art](#framing-token-art) · [Works with Foundry's ring options](#works-with-foundrys-ring-options) · [Troubleshooting](#troubleshooting) · [Settings](#settings)
-- [Art that breaks out of the ring](#art-that-breaks-out-of-the-ring) · [Art framing](#art-framing-zoom-and-focus-per-token) · [Ring effect on targeted tokens](#ring-effect-on-targeted-tokens)
-- [The Ringmaker window](#the-ringmaker-window) · [One ring image per world](#one-ring-image-per-world) · [How it fits Foundry's ring](#how-it-fits-foundrys-ring)
-- [Public API and hooks](#public-api-and-hooks) · [Data Ringmaker writes](#data-ringmaker-writes) · [License](#license)
+- Foundry VTT v13 or v14 (verified on v14).
+- Works with any game system.
+- No other modules needed.
 
 ## Install
 
-In Foundry: **Add-on Modules › Install Module**, paste this manifest URL and click Install:
+In Foundry: **Add-on Modules › Install Module**, paste this manifest URL and click Install, then enable **Ringmaker** in your world:
 
 ```
 https://github.com/cocoomg11/ringmaker/releases/latest/download/module.json
 ```
 
-Then enable **Ringmaker** in your world.
+## Contents
+
+- [Quick start](#quick-start)
+- [How to use](#making-a-ring-image): [Making a ring image](#making-a-ring-image) · [Framing token art](#framing-token-art) · [Works with Foundry's ring options](#works-with-foundrys-ring-options)
+- [Settings](#settings)
+- [Troubleshooting](#troubleshooting)
+- [Removing its data](#removing-its-data)
+- [The Wanderer's family](#the-wanderers-family)
+- [For developers](#for-developers)
+- [License](#license)
 
 ## Quick start
 
@@ -44,11 +49,6 @@ Then enable **Ringmaker** in your world.
 6. **Try it.** Drag an NPC onto a scene: it arrives with your ring. For a token whose art sits badly in the ring, open its Token Configuration, go to **Appearance › Dynamic Token Ring** and use the **Art framing** row (Zoom, Focus, **Fit**).
 
 <!-- screenshot: Game Settings page for Ringmaker with the Ring image picker and the Open Ringmaker button -->
-
-## Compatibility
-
-- Foundry VTT v13 and v14 (verified on v14).
-- Any game system.
 
 ## Making a ring image
 
@@ -118,22 +118,6 @@ Tested on Foundry v14 with Ringmaker's ring in front of the art (the default).
 | **Non-square tokens (e.g. 2×1)** | The ring stays round and is sized to the smaller side, as Foundry's own rings. |
 | **Fit modes (cover, fill, …), Scale X/Y, mirroring** | Work as with Foundry's rings: the ring grows with the scale, mirroring flips the art only. |
 
-## Troubleshooting
-
-| What you see | Cause | Fix |
-| --- | --- | --- |
-| The ring covers the whole token (a filled disc or square) and *Open Ringmaker* says **no ring band found** | The image has no transparent middle (a filled centre, or a JPG) | Erase the middle to full transparency and save as PNG or WebP. |
-| A white or coloured square around the ring | The image's corners aren't transparent (JPG, or a background layer left on) | Delete the background layer; export PNG with transparency. |
-| The ring is much smaller or bigger than Foundry's rings | A faint ring (less than half opaque) or a solid shape far outside it is being measured as the band | Make the band solid; keep outer decorations thin (spikes) or partly transparent; adjust **Ring size**. |
-| Gems or spikes are cut off at the edge | They reach past the image frame, or **Ring size** is above 100 % | Leave a little margin in the image, or lower **Ring size**. |
-| A ring colour or the pulse only tints the outer part of a very thick band | Foundry tints only a fixed colour band (60–100 % of the frame's radius) | Use a thinner band, or accept the untinted inner part. |
-| Lots of background shows around the art inside a thin ring | A thin band leaves a large opening, and Foundry sizes the art for its own ring | Raise **Zoom** on those tokens (or **Ring size**). |
-| A token shows Foundry's steel or bronze ring instead | No ring image is set, or it failed to load | Set the image; check *Open Ringmaker* for an error. |
-| Art reaches over the ring | **Let art break out of the ring** is ticked on that token, or **Ring in front of token art** is off | Untick it, or turn the setting on. |
-| I changed the image and nothing happened | Changing the ring image reloads Foundry; other players see it after their next reload | Ask players to reload (F5). |
-
-**One ring style per world.** Foundry's dynamic rings use a single ring style for the whole world, so every token with its ring turned on, including ones you turned on yourself, shows Ringmaker's ring while an image is set. No image is included; while none is chosen, Ringmaker registers nothing and Foundry's own ring is left alone.
-
 ## Settings
 
 All in **Game Settings › Configure Settings › Ringmaker** (world settings, GM only):
@@ -170,7 +154,7 @@ With **Ring effect on targeted tokens** set, a token with Ringmaker's ring gets 
 
 ### The Ringmaker window
 
-**Open Ringmaker** (same page as the settings) shows what's set, a live preview and three buttons. From 1.6 it uses the same look as the author's other Foundry modules (from the shared wanderers-core stylesheet, shipped inside Ringmaker), follows Foundry's light and dark themes, and reopens where you last left it.
+**Open Ringmaker** (same page as the settings) shows what's set, a live preview and three buttons. It follows Foundry's light and dark themes (see [The Wanderer's family](#the-wanderers-family)) and reopens where you last left it.
 
 - **Page head**: a badge with the overall state (Ring ready, No ring image, Image didn't load, Reload needed) and which tokens Ringmaker targets.
 - **Ring image**: the image path, where the ring band was found, and the current ring size, art size, background colour and drawing order.
@@ -194,7 +178,54 @@ Foundry's ring frames are squares where the token art fills the middle two third
 
 Only the active GM makes these changes, so nothing happens twice when several GMs are connected. What each token had before is kept in `flags.ringmaker`.
 
-## Public API and hooks
+## Troubleshooting
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| The ring covers the whole token (a filled disc or square) and *Open Ringmaker* says **no ring band found** | The image has no transparent middle (a filled centre, or a JPG) | Erase the middle to full transparency and save as PNG or WebP. |
+| A white or coloured square around the ring | The image's corners aren't transparent (JPG, or a background layer left on) | Delete the background layer; export PNG with transparency. |
+| The ring is much smaller or bigger than Foundry's rings | A faint ring (less than half opaque) or a solid shape far outside it is being measured as the band | Make the band solid; keep outer decorations thin (spikes) or partly transparent; adjust **Ring size**. |
+| Gems or spikes are cut off at the edge | They reach past the image frame, or **Ring size** is above 100 % | Leave a little margin in the image, or lower **Ring size**. |
+| A ring colour or the pulse only tints the outer part of a very thick band | Foundry tints only a fixed colour band (60–100 % of the frame's radius) | Use a thinner band, or accept the untinted inner part. |
+| Lots of background shows around the art inside a thin ring | A thin band leaves a large opening, and Foundry sizes the art for its own ring | Raise **Zoom** on those tokens (or **Ring size**). |
+| A token shows Foundry's steel or bronze ring instead | No ring image is set, or it failed to load | Set the image; check *Open Ringmaker* for an error. |
+| Art reaches over the ring | **Let art break out of the ring** is ticked on that token, or **Ring in front of token art** is off | Untick it, or turn the setting on. |
+| I changed the image and nothing happened | Changing the ring image reloads Foundry; other players see it after their next reload | Ask players to reload (F5). |
+
+**One ring style per world.** Foundry's dynamic rings use a single ring style for the whole world, so every token with its ring turned on, including ones you turned on yourself, shows Ringmaker's ring while an image is set. No image is included; while none is chosen, Ringmaker registers nothing and Foundry's own ring is left alone.
+
+## Removing its data
+
+Use **Remove Ringmaker's ring** in the Ringmaker window: it puts back what each token had and deletes Ringmaker's flags on them. Settings and the window position stay (see the list below).
+
+Ringmaker writes only under its own name, and only when you apply the ring or tick pop-out:
+
+- `flags.ringmaker.prior` on tokens and actor prototype tokens: what the token's ring had before (`{ enabled, scale, applied }`), written for every token Apply goes over (from 1.4 also for tokens whose ring was already on). **Remove Ringmaker's ring** restores it and deletes this flag.
+- `flags.ringmaker.artZoom` (number) and `flags.ringmaker.artFocus` (`{ x, y }`) on tokens and prototype tokens: the art framing (from 1.4). **Remove Ringmaker's ring** deletes them; zoom 1 or focus 0.5 / 0.5 in the token configuration clears them too.
+- `flags.ringmaker.popOut` (boolean) on tokens and prototype tokens: the pop-out checkbox. **Remove Ringmaker's ring** deletes it (from 1.3); you can also untick the box or run `await rm.setPopOut(tokens, false)`. It does nothing while no ring image is set.
+- Remove deletes the whole `flags.ringmaker` namespace on each token and prototype token it touches, so nothing of Ringmaker's is left on them.
+- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, debug logging, ring existing on load). **Remove Ringmaker's ring** does not reset these; they go with the module's data.
+- The target effect writes nothing: it is drawn on each client only.
+- A hidden client setting `ringmaker.windowPlacement` (from 1.6): where the Ringmaker window was left, per user and browser. **Reset window position** in the window clears it; **Remove Ringmaker's ring** leaves it alone (it isn't token data).
+- Ringmaker also sets Foundry's own `ring.enabled` and `ring.subject.scale` on tokens it rings; Remove puts them back.
+
+## The Wanderer's family
+
+Five free modules that work on their own and fit together. Each one switches on only what you use.
+
+| Module | What it does |
+|---|---|
+| [Wanderer's Toolkit](https://github.com/cocoomg11/wayfarers-toolkit) | GM kit for D&D 5e: quest log, travel and flights, inns, loot rolls, boss frames, a three-coin economy. |
+| [Red Book](https://github.com/cocoomg11/red-book) | Session prep: a live session log, next-session board, scene readiness check, Session Start. |
+| [Wanderer's Satchel](https://github.com/cocoomg11/wanderers-satchel) | Optional hub: one window for the family, update check, combined health check, settings backup. |
+| [Ringmaker](https://github.com/cocoomg11/ringmaker) | Your own ring image for Foundry's dynamic token rings. Any game system. |
+| [Loot Ledger](https://github.com/cocoomg11/loot-ledger) | Priced, rollable loot pools and roll tables for D&D 5e, built from a classic-MMO item compendium. |
+
+They share one look that follows Foundry's light and dark themes. None of them needs the others.
+
+## For developers
+
+### Public API and hooks
 
 ```js
 const rm = game.modules.get("ringmaker").api;
@@ -225,19 +256,6 @@ await rm.fitArt(tokens);          // GM: measure each image and set the zoom tha
 Every member is GM only: as a player, each call shows a "GM only" notice and returns `undefined`. (From 1.4.2; before, `plan()` and `status()` worked for players.)
 
 `tokens` is one or a list of placed tokens, token documents, prototype tokens, actors (their prototype token) or token ids on the viewed scene. `remove({ confirm })` is new in 1.4. Ringmaker fires no hooks of its own and listens only to Foundry's.
-
-## Data Ringmaker writes
-
-Only under its own namespace, and only when you apply the ring or tick pop-out:
-
-- `flags.ringmaker.prior` on tokens and actor prototype tokens: what the token's ring had before (`{ enabled, scale, applied }`), written for every token Apply goes over (from 1.4 also for tokens whose ring was already on). **Remove Ringmaker's ring** restores it and deletes this flag.
-- `flags.ringmaker.artZoom` (number) and `flags.ringmaker.artFocus` (`{ x, y }`) on tokens and prototype tokens: the art framing (from 1.4). **Remove Ringmaker's ring** deletes them; zoom 1 or focus 0.5 / 0.5 in the token configuration clears them too.
-- `flags.ringmaker.popOut` (boolean) on tokens and prototype tokens: the pop-out checkbox. **Remove Ringmaker's ring** deletes it (from 1.3); you can also untick the box or run `await rm.setPopOut(tokens, false)`. It does nothing while no ring image is set.
-- Remove deletes the whole `flags.ringmaker` namespace on each token and prototype token it touches, so nothing of Ringmaker's is left on them.
-- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, debug logging, ring existing on load). **Remove Ringmaker's ring** does not reset these; they go with the module's data.
-- The target effect writes nothing: it is drawn on each client only.
-- A hidden client setting `ringmaker.windowPlacement` (from 1.6): where the Ringmaker window was left, per user and browser. **Reset window position** in the window clears it; **Remove Ringmaker's ring** leaves it alone (it isn't token data).
-- Ringmaker also sets Foundry's own `ring.enabled` and `ring.subject.scale` on tokens it rings; Remove puts them back.
 
 ## About
 
