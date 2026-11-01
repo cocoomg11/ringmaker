@@ -2,7 +2,7 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
-## 1.5.0
+## 1.5.0 (2026-11-01)
 
 - **New setting: Debug logging** (`debugLog`, world, off by default). Ringmaker's console output now goes through it: errors and fallbacks are always logged; ring registration and apply/remove counts are logged only while it is on. Wanderer's Satchel finds the setting and can switch it for you.
 - **Localization:** setting names, hints, choices and the menu label are now in `lang/en.json` (English only for now; the Ringmaker window itself is still English).
@@ -15,7 +15,7 @@ All notable changes to Ringmaker. Versions follow the `version` in `module.json`
 - Wanderer's Satchel's Ringmaker page shows the Debug logging switch and it changes this setting.
 - `lang/` is in the release zip.
 
-## 1.4.2
+## 1.4.2 (2026-11-01)
 
 - **Security: the whole API is GM only.** `plan()`, `status()` and `removePlan()` used to answer a player with the ring configuration and token counts. Every member of `game.modules.get("ringmaker").api` now shows "GM only" and returns `undefined` to anyone who isn't a GM. GMs are unaffected.
 
@@ -24,7 +24,7 @@ All notable changes to Ringmaker. Versions follow the `version` in `module.json`
 - As a player, every `api.*` call (including `plan()`, `status()`, `removePlan()`) shows a "GM only" notice and returns `undefined`.
 - As a GM, `plan()`, `status()`, `applyAll()`, `remove()` and the settings menu behave as in 1.4.1.
 
-## 1.4.1
+## 1.4.1 (2026-10-31)
 
 - **Fixed: a token kept drawing its art outside the ring after pop-out was turned off** when the same update also changed its art framing (for example **Remove Ringmaker's ring**, which deletes all of Ringmaker's flags at once). The token now redraws for both changes; before, it needed a scene reload.
 - **Note on Fit:** Fit measures the image's transparent margin, so it is only useful on transparent cut-out art. On a full-bleed portrait (no transparent edge) it has nothing to measure; set Zoom and Focus by hand instead.
@@ -35,7 +35,7 @@ All notable changes to Ringmaker. Versions follow the `version` in `module.json`
 - Pop-out alone and zoom alone still redraw as before.
 - Target effects (Pulse, Gradient, Flash) still show when a player targets a ringed token, on that player's and the GM's client, and stop on untarget.
 
-## 1.4.0
+## 1.4.0 (2026-10-31)
 
 Art framing per token (zoom and a focus point, with live preview), ring effects that actually show, and Remove that tracks every token.
 
@@ -53,7 +53,7 @@ Art framing per token (zoom and a focus point, with live preview), ring effects 
 - The target effect on the targeting player's client with the module installed (verified on the GM client with the patched shader injected; pulse brightness was measured changing over time, flash tinted the ring).
 - Remove on a world where 1.4.0 recorded already-ringed tokens: they keep their ring and lose `flags.ringmaker`.
 
-## 1.3.0
+## 1.3.0 (2026-10-31)
 
 Remove cleans up fully, a live preview in the Ringmaker window, and an optional ring effect on targeted tokens.
 
@@ -73,19 +73,19 @@ Remove cleans up fully, a live preview in the Ringmaker window, and an optional 
 - No console errors on canvas draw with the setting on and off (the ring class is still the 1.2.2 subclass with the private-static forwards).
 
 
-## 1.2.2
+## 1.2.2 (2026-10-31)
 
 - **Fixed: tokens didn't draw on Foundry v14.** With a ring image set, every scene load failed with "Cannot write private member #ringData" and no tokens were drawn. Foundry's token ring class keeps its ring data in a private static field, which its own static methods can't reach when they're called on a subclass (Ringmaker's pop-out ring class). Ringmaker's class now runs those methods on Foundry's own class, so the canvas draws normally and pop-out keeps working. If the ring class can't be adapted, pop-out is turned off and Foundry's own class is used.
 - Includes the 1.2.1 fixes below (1.2.1 was not released).
 
-## 1.2.1
+## 1.2.1 (2026-10-31)
 
 Fixes found in a code review of 1.2.0 (not yet tested in a live world).
 
 - **Pop-out checkbox could show unticked when it was set.** The token configuration now finds the token's data more carefully (placed token, prototype token, or a window that hands over the actor), so the box reflects the saved setting.
 - A large **Ring size** can no longer let the ring image spill into the background part of the ring texture.
 
-## 1.2.0
+## 1.2.0 (2026-10-31)
 
 Token art can break out of the ring.
 
@@ -93,7 +93,7 @@ Token art can break out of the ring.
 - API: `setPopOut(tokens, on)` turns it on or off for placed tokens, token documents, prototype tokens or token ids on the viewed scene (GM only).
 - Pop-out only matters with **Ring in front of token art** on; with it off every token already uses Foundry's order (art over the ring).
 
-## 1.1.0
+## 1.1.0 (2026-10-31)
 
 Ring size and fit now match Foundry's own rings.
 
@@ -104,7 +104,7 @@ Ring size and fit now match Foundry's own rings.
 - **Token art size inside the ring** now defaults to 1 (Foundry's default) instead of 0.85; the setting is new (`artScale`), so the old 0.85 isn't carried over. Tokens still at the 0.85 Ringmaker set move to the new value the next time Apply runs (or on load, with *Ring existing tokens on load*). A scale you set on a token yourself is still kept.
 - The Ringmaker menu shows the ring size, background colour and where the ring band was found in your image.
 
-## 1.0.0
+## 1.0.0 (2026-10-31)
 
 First release.
 
