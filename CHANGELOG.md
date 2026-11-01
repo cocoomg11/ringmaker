@@ -2,6 +2,20 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.6.2 (2026-11-01)
+
+- **Token configuration wording.** The pop-out box is now labelled "Art breaks out of ring" (it no longer wraps mid-phrase; the detail stays in its hint). The Art framing hint no longer ends with developer text about flag names (they are listed in the README under *Data Ringmaker writes*). The Fit button has a localized `aria-label` as well as its tooltip.
+- **Notices and dialogs drop zero counts.** "Ring put on 0 actor prototype tokens and 1 placed token" now reads "Ring put on 1 placed token"; singular and plural are handled for each part. The same goes for the Apply and Remove confirm dialogs and the window's "Still to ring" line.
+- **Debug logging switch in the Ringmaker window** (footer): the same GM-only world setting `ringmaker.debugLog` as in the module settings.
+- **New API member `open()`**: `game.modules.get("ringmaker").api.open()` opens the Ringmaker tools window (GM only, like the rest of the API); the other members are unchanged.
+
+### Untested in Foundry
+
+- Token configuration: the pop-out label fits on one line; the Art framing hint ends after "...is the default."; Fit has an accessible name (check with the inspector or a screen reader).
+- Apply / Remove through the window and API: notices and dialogs read "1 placed token", "3 actor prototype tokens", or both joined with "and", never "0 ...".
+- The Debug logging checkbox in the window: ticking it turns on console messages and the module settings checkbox follows; as a player (window opened by API) it is disabled.
+- `game.modules.get("ringmaker").api.open()` as a GM opens the window (and again brings the same one forward); as a player it shows the "only a GM" notice.
+
 ## 1.6.1 (2026-11-01)
 
 - **The token configuration fields are localized.** The "Let art break out of the ring" box, the Art framing row (Zoom, Focus X / Y, Fit, the Fit tooltip) and their hints now come from `lang/en.json` (`RINGMAKER.tokenConfig.*`), as do the notices (only a GM can change tokens, choose a ring image first, couldn't measure the image, ring put on / taken off with counts) and the Remove confirm dialog (`RINGMAKER.notice.*`). English only for now; the wording is unchanged.

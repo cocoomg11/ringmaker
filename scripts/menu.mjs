@@ -49,6 +49,11 @@ export class RingmakerMenu extends Base {
     };
     for (const el of root.querySelectorAll('[name="ringSize"], [name="background"], [name="ringInFront"]')) el.addEventListener("input", draw);
     draw();
+    // Debug logging: the same world setting as in the module settings (GM only; the checkbox is disabled for players).
+    root.querySelector('[name="debugLog"]')?.addEventListener("change", async ev => {
+      if (!game.user.isGM) return;
+      try { await game.settings.set(Ring.ID, "debugLog", ev.currentTarget.checked); } catch (e) { ev.currentTarget.checked = !ev.currentTarget.checked; }
+    });
   }
 
   static async #apply(event, btn) {

@@ -1,7 +1,7 @@
 /**
  * Ringmaker entry point: settings, the settings menu, the API and the hooks.
  * API: game.modules.get("ringmaker").api = { applyAll({ npcOnly }), remove({ confirm }), removePlan(), plan({ npcOnly }), status(),
- * setPopOut(tokens, on), setArtZoom(tokens, zoom), setArtFraming(tokens, { zoom, focus }), fitArt(tokens) }.
+ * setPopOut(tokens, on), setArtZoom(tokens, zoom), setArtFraming(tokens, { zoom, focus }), fitArt(tokens), open() }.
  * Every member is GM only (others get a notice and undefined). applyAll and remove are active GM only; setPopOut, setArtZoom, setArtFraming and fitArt are GM only. remove() asks nothing unless { confirm: true }.
  */
 import * as Ring from "./ring.mjs";
@@ -18,8 +18,16 @@ const RAW_API = {
   setPopOut: (tokens, on = true) => Ring.setPopOut(tokens, on),
   setArtZoom: (tokens, zoom = 1) => Ring.setArtZoom(tokens, zoom),
   setArtFraming: (tokens, framing = {}) => Ring.setArtFraming(tokens, framing),
-  fitArt: tokens => Ring.fitArt(tokens)
+  fitArt: tokens => Ring.fitArt(tokens),
+  open: () => openWindow()
 };
+let win = null;
+/** Opens (or brings forward) the Ringmaker tools window; the same window as Configure Settings › Ringmaker › Ringmaker tools. */
+function openWindow() {
+  win ??= new RingmakerMenu();
+  win.render({ force: true });
+  return win;
+}
 /** Every member is GM only: a player gets a "GM only" notice and undefined. */
 export const API = gateApi(RAW_API);
 

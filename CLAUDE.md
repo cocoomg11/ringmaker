@@ -18,7 +18,7 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **Ring class (pop-out):** `popOutRingClass()` subclasses core's `TokenRing`. Core's static `createAssetsUVs`/`getRingDataBySize` use static private fields (`this.#ringData`), which throw on a subclass, so `forwardPrivateStatics` replaces any base static whose source uses `this.#` with a forward that runs it on the base class (1.2.2 fix; tested with a fake base). Never subclass core ring/shader classes without checking for static private fields. Note `CONFIG.Token.ring.ringClass = X` writes into the active ring config, and `canvas.draw()` chains on the previous draw, so after one failed draw later draws re-throw the old error until a reload.
 - **Token config checkbox:** `configSource(app)` (pure, tested) finds the token data being edited (placed token, prototype token, or an actor's prototype token) so the pop-out box is ticked correctly. The exact app property names in v14 still need a live check.
 - **Active-GM writes:** automatic changes (ringing existing tokens at load) run only on the active GM's client (`gm.mjs`). `applyAll` and `remove` are active-GM only; `setPopOut` is GM only.
-- **API:** `{ applyAll({ npcOnly }), remove({ confirm }), removePlan(), plan({ npcOnly }), status(), setPopOut(tokens, on), setArtZoom(tokens, zoom), setArtFraming(tokens, { zoom, focus }), fitArt(tokens) }`. `setPopOut` and the framing calls take placeables, token documents, prototype tokens, actors or ids (`resolveTokens`).
+- **API:** `{ applyAll({ npcOnly }), remove({ confirm }), removePlan(), plan({ npcOnly }), status(), setPopOut(tokens, on), setArtZoom(tokens, zoom), setArtFraming(tokens, { zoom, focus }), fitArt(tokens), open() }`. `setPopOut` and the framing calls take placeables, token documents, prototype tokens, actors or ids (`resolveTokens`).
 - No feature registry, health check or update-notes card here; the module is small and every behaviour is a setting.
 
 ## 1.3 notes
@@ -47,6 +47,10 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **windowPlacement** (hidden client setting, core's): registered in `init`. Remove (token cleanup) doesn't touch it; the window's Reset window position button clears it (`resetPlacement(ID)`); README *Data Ringmaker writes* lists it.
 - CI (1.6.1) calls core's reusable `module-checks.yml@v0.5.1` with `lint: false, types: false` (no ESLint/tsc dev dependencies yet, and `ring.mjs` isn't JSDoc-typed); pin check, syntax check and tests run. Turn lint/types on when those exist.
 - Release zip: `module.json scripts styles assets lang vendor LICENSE README.md CHANGELOG.md` minus `vendor/wanderers-core/config/*`, `vendor.mjs`, `testing/*`.
+
+## 1.6.2 notes
+- `countPhrase(t, actors, tokens)` (menu-view.mjs, pure) builds every count phrase (window, dialogs, notices): zero parts dropped, lang `RINGMAKER.window.count.and` joins two. Lang strings take `{what}`.
+- `api.open()` keeps one `RingmakerMenu` instance in main.mjs. The window's footer has the `debugLog` checkbox (same world setting; `status().debug`).
 
 ## House practices
 - **Tag format:** releases are tagged `vMAJOR.MINOR.PATCH`; the release workflow fails early on anything else.

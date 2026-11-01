@@ -27,6 +27,15 @@ const W = "RINGMAKER.window.";
 export const counted = (t, what, n) => t(`${W}count.${what}.${n === 1 ? "one" : "other"}`, { n });
 
 /**
+ * "2 actor prototype tokens and 1 placed token", leaving out a zero count ("1 placed token"); "" when both are zero.
+ * @param {(key: string, data?: object) => string} t
+ */
+export const countPhrase = (t, actors, tokens) => {
+  const parts = [actors && counted(t, "actors", actors), tokens && counted(t, "tokens", tokens)].filter(Boolean);
+  return parts.length === 2 ? t(`${W}count.and`, { a: parts[0], b: parts[1] }) : parts[0] ?? "";
+};
+
+/**
  * The overall state shown as the page head's badge.
  * @param {{ image?: string, error?: unknown, active?: boolean | null }} st Ring.status()
  * @returns {{ tone: "ok" | "warn" | "bad", key: string }}
@@ -58,9 +67,9 @@ export function menuHTML({ st, plan, gm, t }) {
     return `<div class="rm-body">${head}${gmNote}
       <div class="wc-alert wc-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
         <span class="wc-alert-title">${esc(t(`${W}noImage.title`))}</span><p>${esc(t(`${W}noImage.text`))}</p></div>
-      ${tokensPanel({ st, plan, gm, t })}${foot(t)}</div>`;
+      ${tokensPanel({ st, plan, gm, t })}${foot(t, { gm, debug: st?.debug })}</div>`;
   }
-  return `<div class="rm-body">${head}${gmNote}${setupPanel(st, t)}${lookPanel(st, dis, t)}${tokensPanel({ st, plan, gm, t })}${foot(t)}</div>`;
+  return `<div class="rm-body">${head}${gmNote}${setupPanel(st, t)}${lookPanel(st, dis, t)}${tokensPanel({ st, plan, gm, t })}${foot(t, { gm, debug: st?.debug })}</div>`;
 }
 
 /** What's set: status lines and the four look values. */
@@ -101,7 +110,7 @@ export function lookPanel(st, dis, t) {
 /** Counts and the Apply / Remove buttons. */
 export function tokensPanel({ st, plan, gm, t }) {
   const line = !st?.image ? "" : plan?.count
-    ? statusLine("info", t(`${W}tokens.todo`, { actors: counted(t, "actors", plan.actors.length), tokens: counted(t, "tokens", plan.tokens) }))
+    ? statusLine("info", t(`${W}tokens.todo`, { what: countPhrase(t, plan.actors.length, plan.tokens) }))
     : statusLine("ok", t(`${W}tokens.done`));
   const dis = gm ? "" : " disabled";
   return `<section class="wc-panel"><header class="wc-panel-head"><h3>${esc(t(`${W}tokens.head`))}</h3></header>
@@ -114,14 +123,14 @@ export function tokensPanel({ st, plan, gm, t }) {
 }
 
 /** Footer: forget the window's remembered position. */
-export function foot(t) {
-  return `<footer class="wc-row rm-foot"><button type="button" class="wc-btn wc-btn-ghost wc-btn-sm" data-action="resetPlacement"><i class="fa-solid fa-up-down-left-right" aria-hidden="true"></i> ${esc(t(`${W}resetPlace`))}</button></footer>`;
+export function foot(t, { gm = true, debug = false } = {}) {
+  return `<footer class="wc-row rm-foot"><label class="rm-check" title="${esc(t(`${W}debug.hint`))}"><input type="checkbox" name="debugLog"${debug ? " checked" : ""}${gm ? "" : " disabled"}> ${esc(t(`${W}debug.label`))}</label><button type="button" class="wc-btn wc-btn-ghost wc-btn-sm" data-action="resetPlacement"><i class="fa-solid fa-up-down-left-right" aria-hidden="true"></i> ${esc(t(`${W}resetPlace`))}</button></footer>`;
 }
 
 /** The confirm dialogs' HTML. */
 export function applyConfirm(t, plan) {
-  return `<p>${esc(t(`${W}dialog.apply.body`, { actors: counted(t, "actors", plan.actors.length), tokens: counted(t, "tokens", plan.tokens) }))}</p><p class="hint">${esc(t(`${W}dialog.apply.hint`))}</p>`;
+  return `<p>${esc(t(`${W}dialog.apply.body`, { what: countPhrase(t, plan.actors.length, plan.tokens) }))}</p><p class="hint">${esc(t(`${W}dialog.apply.hint`))}</p>`;
 }
 export function removeConfirm(t, rp) {
-  return `<p>${esc(t(`${W}dialog.remove.count`, { actors: counted(t, "actors", rp.actors), tokens: counted(t, "tokens", rp.tokens) }))}</p><p>${esc(t(`${W}dialog.remove.body`))}</p><p class="hint">${esc(t(`${W}dialog.remove.hint`))}</p>`;
+  return `<p>${esc(t(`${W}dialog.remove.count`, { what: countPhrase(t, rp.actors, rp.tokens) }))}</p><p>${esc(t(`${W}dialog.remove.body`))}</p><p class="hint">${esc(t(`${W}dialog.remove.hint`))}</p>`;
 }

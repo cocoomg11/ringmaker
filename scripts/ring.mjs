@@ -28,6 +28,7 @@
 import { isActiveGM } from "./gm.mjs";
 import { log } from "./log.mjs";
 import { esc } from "../vendor/wanderers-core/index.mjs";
+import { countPhrase } from "./menu-view.mjs";
 
 /** Localized text (called at use time, never at import). */
 const tr = (key, data) => (data ? game.i18n.format(key, data) : game.i18n.localize(key));
@@ -601,8 +602,8 @@ function addArtZoomField(app, root, after, src) {
   div.innerHTML = `<label>${esc(tr("RINGMAKER.tokenConfig.artFraming.label"))}</label><div class="form-fields" style="gap:0.4rem; align-items:center">`
     + num(ARTZOOM, tr("RINGMAKER.tokenConfig.artFraming.zoom"), cur, ZOOM_RANGE.min, ZOOM_RANGE.max, 0.01)
     + num(`${ARTFOCUS}.x`, tr("RINGMAKER.tokenConfig.artFraming.focusX"), f.x, 0, 1, 0.01) + num(`${ARTFOCUS}.y`, tr("RINGMAKER.tokenConfig.artFraming.focusY"), f.y, 0, 1, 0.01)
-    + `<button type="button" data-ringmaker="fit" title="${esc(tr("RINGMAKER.tokenConfig.artFraming.fitTitle"))}"><i class="fa-solid fa-compress"></i> ${esc(tr("RINGMAKER.tokenConfig.artFraming.fit"))}</button></div>`
-    + `<p class="hint">${esc(tr("RINGMAKER.tokenConfig.artFraming.hint", { zoomFlag: `flags.${ID}.${ARTZOOM}`, focusFlag: `.${ARTFOCUS}` }))}</p>`;
+    + `<button type="button" data-ringmaker="fit" title="${esc(tr("RINGMAKER.tokenConfig.artFraming.fitTitle"))}" aria-label="${esc(tr("RINGMAKER.tokenConfig.artFraming.fitLabel"))}"><i class="fa-solid fa-compress"></i> ${esc(tr("RINGMAKER.tokenConfig.artFraming.fit"))}</button></div>`
+    + `<p class="hint">${esc(tr("RINGMAKER.tokenConfig.artFraming.hint"))}</p>`;
   after.after(div);
   const zoomInput = div.querySelector(`[name="flags.${ID}.${ARTZOOM}"]`);
   // Live preview: the inputs are form fields, so core's TokenConfig copies their values onto its preview token (app._preview,
@@ -740,13 +741,13 @@ export function plan({ npcOnly = mode() === "npc", revert = false } = {}) {
   return { actors, scenes, count, tokens: count - actors.length };
 }
 
-/** Counted phrase from the lang file (`RINGMAKER.window.count.<what>.one|other`). */
-const counted = (what, n) => tr(`RINGMAKER.window.count.${what}.${n === 1 ? "one" : "other"}`, { n });
+/** "1 placed token", "2 actor prototype tokens and 1 placed token": zero counts are left out (lang `RINGMAKER.window.count.*`). */
+const counted = (actors, tokens) => countPhrase(tr, actors, tokens);
 async function run(p, verb, quiet) {
   foundryDeletes(p.actors); for (const [, ups] of p.scenes) foundryDeletes(ups);
   for (const c of chunks(p.actors)) await Actor.updateDocuments(c);
   for (const [s, ups] of p.scenes) for (const c of chunks(ups)) await s.updateEmbeddedDocuments("Token", c);
-  if (!quiet || p.count) ui.notifications.info(tr(`RINGMAKER.notice.ring.${verb}`, { actors: counted("actors", p.actors.length), tokens: counted("tokens", p.tokens) }));
+  if (!quiet || p.count) ui.notifications.info(tr(`RINGMAKER.notice.ring.${verb}`, { what: counted(p.actors.length, p.tokens) }));
   return { actors: p.actors.length, tokens: p.tokens };
 }
 
@@ -772,7 +773,7 @@ export async function remove({ confirm = false } = {}) {
   const p = plan({ revert: true });
   if (confirm) {
     const ok = await foundry.applications.api.DialogV2.confirm({ window: { title: tr("RINGMAKER.window.remove") }, rejectClose: false,
-      content: `<p>${esc(tr("RINGMAKER.notice.removeConfirm", { actors: counted("actors", p.actors.length), tokens: counted("tokens", p.tokens) }))}</p>` });
+      content: `<p>${esc(tr("RINGMAKER.notice.removeConfirm", { what: counted(p.actors.length, p.tokens) }))}</p>` });
     if (!ok) return null;
   }
   log.debug(`remove: ${p.actors.length} actor prototype tokens, ${p.tokens} placed tokens`);
@@ -796,7 +797,7 @@ export async function saveLook({ ringSize, background, ringInFront } = {}) {
 
 /** What's set and whether the ring is in use. */
 export function status() {
-  const st = { image: image(), mode: mode(), scale: scale(), size: size(), background: bg(), front: front(), targetEffect: targetEffect(), artZoom: zoomOn(), shader: shaderPatched, band, registered: false, active: null, error: loadError };
+  const st = { image: image(), mode: mode(), scale: scale(), size: size(), background: bg(), front: front(), targetEffect: targetEffect(), artZoom: zoomOn(), shader: shaderPatched, band, registered: false, active: null, error: loadError, debug: log.enabled() };
   try { st.registered = CONFIG.Token.ring.configIDs.includes(RING_ID); st.active = CONFIG.Token.ring.id === RING_ID; } catch { }
   return st;
 }

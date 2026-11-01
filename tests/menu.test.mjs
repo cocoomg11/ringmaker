@@ -45,7 +45,9 @@ test("every page state renders with no missing strings and escapes values", () =
   for (const n of ["ringSize", "background", "ringInFront"]) assert.match(ok, new RegExp(`name="${n}"`));
   assert.match(ok, /class="rm-preview"/); assert.doesNotMatch(ok, / disabled/);
   const player = V.menuHTML({ st: ST, plan: PLAN, gm: false, t });
-  assert.equal((player.match(/ disabled/g) ?? []).length, 6, "inputs, Save, Apply, Remove disabled for players");
+  assert.equal((player.match(/ disabled/g) ?? []).length, 7, "inputs, Save, Apply, Remove, debug switch disabled for players");
+  assert.match(ok, /name="debugLog"/);
+  assert.match(V.menuHTML({ st: { ...ST, debug: true }, plan: PLAN, gm: true, t }), /name="debugLog" checked/);
   const none = V.menuHTML({ st: { ...ST, image: "" }, plan: null, gm: true, t });
   assert.match(none, /wc-alert wc-warn/); assert.doesNotMatch(none, /rm-preview/); assert.match(none, /data-action="apply" disabled/);
 });
@@ -78,4 +80,24 @@ test("every RINGMAKER.notice / tokenConfig key used in ring.mjs and gm.mjs exist
     for (const [, k] of src.matchAll(/"(RINGMAKER\.(?:notice|tokenConfig)\.[\w.]+)"/g)) assert.ok(lang[k], k);
   }
   for (const k of ["on", "off"]) assert.ok(lang[`RINGMAKER.notice.ring.${k}`]);
+});
+
+test("countPhrase leaves out zero counts and handles singular/plural", () => {
+  assert.equal(V.countPhrase(t, 0, 1), "1 placed token");
+  assert.equal(V.countPhrase(t, 3, 0), "3 actor prototype tokens");
+  assert.equal(V.countPhrase(t, 1, 2), "1 actor prototype token and 2 placed tokens");
+  assert.equal(V.countPhrase(t, 0, 0), "");
+  assert.match(V.removeConfirm(t, { actors: 0, tokens: 1 }), /<p>1 placed token\.<\/p>/);
+  assert.match(V.applyConfirm(t, { actors: [], tokens: 5 }), /ring for 5 placed tokens\?/);
+});
+
+test("1.6.2 user-facing token config strings", () => {
+  assert.equal(lang["RINGMAKER.tokenConfig.popOut.label"], "Art breaks out of ring");
+  assert.doesNotMatch(lang["RINGMAKER.tokenConfig.artFraming.hint"], /flags\.|Stored as|\{/);
+  assert.ok(lang["RINGMAKER.tokenConfig.artFraming.fitLabel"]);
+});
+
+test("main.mjs exposes api.open and ring.mjs gives the Fit button an aria-label", async () => {
+  assert.match(await read("scripts/main.mjs"), /open: \(\) => openWindow\(\)/);
+  assert.match(await read("scripts/ring.mjs"), /aria-label="\$\{esc\(tr\("RINGMAKER\.tokenConfig\.artFraming\.fitLabel"\)\)\}"/);
 });

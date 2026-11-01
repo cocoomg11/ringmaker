@@ -140,7 +140,7 @@ All in **Game Settings › Configure Settings › Ringmaker** (world settings, G
 
 <!-- screenshot: a pop-out token (art reaching past the ring) next to a normal one -->
 
-For cut-out token art (say a dragon whose head and wings reach past a round frame), tick **Let art break out of the ring** in the token's configuration (Appearance › Dynamic Token Ring; GM only, placed or prototype tokens). Art outside the ring's opening is then drawn over the ring instead of trimmed, so the parts that reach past it show in front of the ring; art inside the opening stays under the ring as usual. Give the art a transparent background and keep its own disc inside the ring's opening (about two thirds of the image's width, centred). Other tokens aren't affected. It needs **Ring in front of token art**; with that off, every token's art is already drawn over the ring. The choice is kept in `flags.ringmaker.popOut`.
+For cut-out token art (say a dragon whose head and wings reach past a round frame), tick **Art breaks out of ring** in the token's configuration (Appearance › Dynamic Token Ring; GM only, placed or prototype tokens). Art outside the ring's opening is then drawn over the ring instead of trimmed, so the parts that reach past it show in front of the ring; art inside the opening stays under the ring as usual. Give the art a transparent background and keep its own disc inside the ring's opening (about two thirds of the image's width, centred). Other tokens aren't affected. It needs **Ring in front of token art**; with that off, every token's art is already drawn over the ring. The choice is kept in `flags.ringmaker.popOut`.
 
 ### Art framing: zoom and focus per token
 
@@ -164,6 +164,7 @@ With **Ring effect on targeted tokens** set, a token with Ringmaker's ring gets 
 - **Ring look (preview)**: a sample token picture with your ring image over it. Move **Ring size**, pick a **Background colour** or tick **Ring in front of token art** and the preview follows at once, before anything is saved. **Save and reload** stores those three settings and asks to reload Foundry. The preview uses the same layout maths as the ring itself, so the ring, background and art sizes match; it doesn't show a token's own background colour, ring effects or the soft edges Foundry's shader draws.
 - **Apply ring to existing tokens**: asks first, then turns the ring on for the prototype tokens of matching actors and every matching token on every scene.
 - **Remove Ringmaker's ring**: asks first (with a count), then puts every token and prototype token Ringmaker changed back the way it was and deletes all of Ringmaker's flags on them (recorded values and the pop-out choice). Tokens whose ring you turned on yourself keep their ring.
+- **Debug logging**: the same world setting as in the module settings (GM only).
 - **Reset window position**: forgets where the window was left, so it opens at Foundry's default spot next time.
 
 ### One ring image per world
@@ -189,7 +190,7 @@ Only the active GM makes these changes, so nothing happens twice when several GM
 | A ring colour or the pulse only tints the outer part of a very thick band | Foundry tints only a fixed colour band (60–100 % of the frame's radius) | Use a thinner band, or accept the untinted inner part. |
 | Lots of background shows around the art inside a thin ring | A thin band leaves a large opening, and Foundry sizes the art for its own ring | Raise **Zoom** on those tokens (or **Ring size**). |
 | A token shows Foundry's steel or bronze ring instead | No ring image is set, or it failed to load | Set the image; check *Open Ringmaker* for an error. |
-| Art reaches over the ring | **Let art break out of the ring** is ticked on that token, or **Ring in front of token art** is off | Untick it, or turn the setting on. |
+| Art reaches over the ring | **Art breaks out of ring** is ticked on that token, or **Ring in front of token art** is off | Untick it, or turn the setting on. |
 | I changed the image and nothing happened | Changing the ring image reloads Foundry; other players see it after their next reload | Ask players to reload (F5). |
 
 **One ring style per world.** Foundry's dynamic rings use a single ring style for the whole world, so every token with its ring turned on, including ones you turned on yourself, shows Ringmaker's ring while an image is set. No image is included; while none is chosen, Ringmaker registers nothing and Foundry's own ring is left alone.
@@ -239,6 +240,7 @@ await rm.remove({ confirm: true }); // same as remove(), but asks first with cou
 await rm.setArtFraming(tokens, { zoom: 1.3, focus: { x: 0.55, y: 0.6 } }); // GM: art zoom and focus (either part may be left out)
 await rm.setArtZoom(tokens, 1.3); // GM: zoom only (1 clears it)
 await rm.fitArt(tokens);          // GM: measure each image and set the zoom that fills the opening
+rm.open();                        // GM: open the Ringmaker tools window (for launchers such as Wanderer's Satchel)
 ```
 
 | Member | Stability | Notes |
@@ -252,6 +254,7 @@ await rm.fitArt(tokens);          // GM: measure each image and set the zoom tha
 | `setArtFraming(tokens, { zoom, focus })` | experimental | new in 1.4; GM only |
 | `setArtZoom(tokens, zoom)` | experimental | new in 1.4; GM only |
 | `fitArt(tokens)` | experimental | new in 1.4; GM only |
+| `open()` | experimental | new in 1.6.2; GM only; opens the Ringmaker tools window |
 
 Every member is GM only: as a player, each call shows a "GM only" notice and returns `undefined`. (From 1.4.2; before, `plan()` and `status()` worked for players.)
 
