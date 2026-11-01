@@ -7,6 +7,7 @@
 import * as Ring from "./ring.mjs";
 import { RingmakerMenu } from "./menu.mjs";
 import { gateApi } from "./gm.mjs";
+import { registerWindowPlacement } from "../vendor/wanderers-core/foundry/index.mjs";
 
 const RAW_API = {
   applyAll: (opts = {}) => Ring.applyAll(opts),
@@ -24,6 +25,7 @@ export const API = gateApi(RAW_API);
 
 Hooks.once("init", () => {
   Ring.registerSettings();
+  registerWindowPlacement(Ring.ID); // hidden client setting ringmaker.windowPlacement: where the Ringmaker window was left
   game.settings.registerMenu(Ring.ID, "menu", {
     name: "RINGMAKER.menu.name", label: "RINGMAKER.menu.label", hint: "RINGMAKER.menu.hint",
     icon: "fa-solid fa-circle-notch", type: RingmakerMenu, restricted: true

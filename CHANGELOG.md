@@ -2,6 +2,23 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.6.0 (2026-11-01)
+
+- **New look for the Ringmaker window.** "Ringmaker tools" now uses the shared look of the author's other modules (a page head with a status badge, panels for the ring image, the preview and the tokens, status lines and matching buttons), following Foundry's light and dark themes. Every control is still there: the live ring preview with Ring size, Background colour and Ring in front, Save and reload, Apply and Remove (with their confirm dialogs).
+- **The window is localized.** Its text, the confirm dialogs and its notices are now `RINGMAKER.window.*` keys in `lang/en.json` (English only for now).
+- **The window reopens where you left it** (per user and browser). Its position is kept in a hidden client setting, `ringmaker.windowPlacement`; **Reset window position** at the bottom of the window forgets it.
+- Under the hood: Ringmaker now ships a pinned copy of the shared library wanderers-core 0.5.0 in `vendor/wanderers-core/` (nothing to install). CI and the release check that copy against its pin; the release zip includes `styles/` and `vendor/` (without core's dev-only `config/`, `vendor.mjs` and `testing/`).
+
+### Untested in Foundry
+
+- The window in the **dark and the light theme**: page head badge, panels, status lines, stat tiles, buttons (Apply primary, Remove red), the colour swatch and the preview's checker background are readable in both.
+- The **live preview** still follows Ring size, Background colour and Ring in front as you change them, and Save and reload still saves and asks to reload.
+- **Localisation**: no raw `RINGMAKER.window.*` key shows anywhere (window title, headings, counts such as "1 placed token", confirm dialogs, notices).
+- The window with no ring image chosen (warning, Apply disabled) and as a player (if opened by API; controls disabled, GM-only note).
+- Move the window, close and reopen it, reload: it opens in the same place; Reset window position, then close and reopen: it opens at Foundry's default spot. A smaller browser window pulls it back on screen.
+- The confirm dialogs carry the shared look too.
+- The release zip has `styles/ringmaker.css` and `vendor/wanderers-core/styles/wanderers-ui.css`, and Foundry loads both (no 404 in the console).
+
 ## 1.5.0 (2026-11-01)
 
 - **New setting: Debug logging** (`debugLog`, world, off by default). Ringmaker's console output now goes through it: errors and fallbacks are always logged; ring registration and apply/remove counts are logged only while it is on. Wanderer's Satchel finds the setting and can switch it for you.

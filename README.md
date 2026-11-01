@@ -170,13 +170,17 @@ With **Ring effect on targeted tokens** set, a token with Ringmaker's ring gets 
 
 ### The Ringmaker window
 
-**Open Ringmaker** (same page as the settings) shows what's set, a live preview and three buttons:
+**Open Ringmaker** (same page as the settings) shows what's set, a live preview and three buttons. From 1.6 it uses the same look as the author's other Foundry modules (from the shared wanderers-core stylesheet, shipped inside Ringmaker), follows Foundry's light and dark themes, and reopens where you last left it.
+
+- **Page head**: a badge with the overall state (Ring ready, No ring image, Image didn't load, Reload needed) and which tokens Ringmaker targets.
+- **Ring image**: the image path, where the ring band was found, and the current ring size, art size, background colour and drawing order.
 
 <!-- screenshot: the Open Ringmaker window with the live preview -->
 
 - **Ring look (preview)**: a sample token picture with your ring image over it. Move **Ring size**, pick a **Background colour** or tick **Ring in front of token art** and the preview follows at once, before anything is saved. **Save and reload** stores those three settings and asks to reload Foundry. The preview uses the same layout maths as the ring itself, so the ring, background and art sizes match; it doesn't show a token's own background colour, ring effects or the soft edges Foundry's shader draws.
 - **Apply ring to existing tokens**: asks first, then turns the ring on for the prototype tokens of matching actors and every matching token on every scene.
 - **Remove Ringmaker's ring**: asks first (with a count), then puts every token and prototype token Ringmaker changed back the way it was and deletes all of Ringmaker's flags on them (recorded values and the pop-out choice). Tokens whose ring you turned on yourself keep their ring.
+- **Reset window position**: forgets where the window was left, so it opens at Foundry's default spot next time.
 
 ### One ring image per world
 
@@ -232,6 +236,7 @@ Only under its own namespace, and only when you apply the ring or tick pop-out:
 - Remove deletes the whole `flags.ringmaker` namespace on each token and prototype token it touches, so nothing of Ringmaker's is left on them.
 - World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, debug logging, ring existing on load). **Remove Ringmaker's ring** does not reset these; they go with the module's data.
 - The target effect writes nothing: it is drawn on each client only.
+- A hidden client setting `ringmaker.windowPlacement` (from 1.6): where the Ringmaker window was left, per user and browser. **Reset window position** in the window clears it; **Remove Ringmaker's ring** leaves it alone (it isn't token data).
 - Ringmaker also sets Foundry's own `ring.enabled` and `ring.subject.scale` on tokens it rings; Remove puts them back.
 
 ## About

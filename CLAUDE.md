@@ -5,7 +5,8 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 ## File map (`scripts/`)
 - `main.mjs` entry: `init` registers settings and the menu; `ready` applies to existing tokens; adds the pop-out field to the token config; exposes `game.modules.get("ringmaker").api`.
 - `ring.mjs` core: ring registration (spritesheet + canvas texture from the world setting image), geometry matching core rings, background disc, patched ring shader, settings (`ring.mjs` registers them), apply/remove/plan/status logic.
-- `menu.mjs` "Ringmaker tools" settings menu (ApplicationV2, HTML built in code; live ring preview with size/colour/front inputs and Save and reload, Apply with confirm, Remove with confirm and count).
+- `menu.mjs` "Ringmaker tools" settings menu (ApplicationV2 + core `RememberedWindow`, key `menu`; live ring preview with size/colour/front inputs and Save and reload, Apply with confirm, Remove with confirm and count, Reset window position). `menu-view.mjs` (pure, 1.6) its HTML on core's `wc-*` classes, strings via `t()` from `RINGMAKER.window.*`.
+- `styles/ringmaker.css` (1.6) only the window's own layout (preview, controls), every selector under `.rm-window`, core tokens only.
 - `gm.mjs` pure active-GM pick.
 - `assets/token-ring.json` one-frame spritesheet descriptor (the texture is drawn from the setting image, not read from disk).
 
@@ -36,7 +37,16 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 
 ## 1.5 notes
 - **Logging:** all console output goes through `scripts/log.mjs` (`log.error` always, `log.debug` only while the world setting `debugLog` is on; a throwing read counts as off). A test fails on any raw `console.*` elsewhere. `debugLog` is the key Wanderer's Satchel's adapter expects (`debugSetting` `{ namespace: "ringmaker", key: "debugLog" }`).
-- **Localization:** setting/menu strings are `RINGMAKER.*` keys in `lang/en.json` (declared in `module.json` `languages`; the release zip includes `lang`). `langChoices` maps choices to keys; the `TARGETS`/`TARGET_EFFECTS` English maps stay for the menu HTML, which is still English.
+- **Localization:** setting/menu strings are `RINGMAKER.*` keys in `lang/en.json` (declared in `module.json` `languages`; the release zip includes `lang`). `langChoices` maps choices to keys; the `TARGETS`/`TARGET_EFFECTS` English maps are no longer read by the window (1.6 uses the lang keys) but stay exported.
+
+## 1.6 notes (wanderers-core)
+- **Core vendored** (first move): `vendor/wanderers-core/` pinned by `wanderers-core.lock.json` (0.5.0). Never edit it; update with `node vendor/wanderers-core/vendor.mjs update X.Y.Z` (behind the agent proxy: `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`), then test and commit `vendor/` with the lock. `npm run core:verify` checks it locally; CI (`test.yml`) and the Release workflow run `verify --remote`. Read core's CONVENTIONS.md and docs/ui.md, docs/windows.md.
+- Only these core parts are used: `UI_CLASSES`, `esc`, `badge`, `statusLine` (pure, `menu-view.mjs`) and `RememberedWindow`, `registerWindowPlacement`, `resetPlacement` (Foundry half, `menu.mjs` / `main.mjs`). Not adopted (nothing to use them for yet): createFeatures/createSettings, leader, health, store, data folder, keybindings.
+- **Look:** module.json `styles` lists core's `wanderers-ui.css` first, then `styles/ringmaker.css`. Windows and confirm dialogs carry `WINDOW_CLASSES` (`rm-window` + `...UI_CLASSES`); never write a literal `wc-r<N>` (test). Use core's components (`wc-pagehead`, `wc-panel`, `wc-lines`/`wc-status`, `wc-stats`, `wc-alert`, `wc-chip`, `wc-btn*`) before adding CSS. A new core version with a new stylesheet revision means checking the window in both themes.
+- **Window strings** are `RINGMAKER.window.*` in `lang/en.json` (tests fail on a missing key or an unfilled `{placeholder}`); `t()` returns plain text, views `esc()` it. The token-config fields added by `ring.mjs` are still English.
+- **windowPlacement** (hidden client setting, core's): registered in `init`. Remove (token cleanup) doesn't touch it; the window's Reset window position button clears it (`resetPlacement(ID)`); README *Data Ringmaker writes* lists it.
+- CI is still the module's own `test.yml` (pin check, syntax, tests), not core's reusable `module-checks.yml`: that needs ESLint/tsc dev dependencies, a committed `package-lock.json` and JSDoc-clean scripts (`ring.mjs` isn't typed), and npm wasn't reachable. Move to it when those exist.
+- Release zip: `module.json scripts styles assets lang vendor LICENSE README.md CHANGELOG.md` minus `vendor/wanderers-core/config/*`, `vendor.mjs`, `testing/*`.
 
 ## House practices
 - **Tag format:** releases are tagged `vMAJOR.MINOR.PATCH`; the release workflow fails early on anything else.
@@ -49,13 +59,13 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **Releases:** end with a live checklist (what needs a live Foundry world to verify) in the changelog or handoff.
 
 ## Tests
-- `npm test` = `node --test` (`tests/ring.test.mjs`, incl. log and lang checks); `npm run check` syntax-checks scripts. CI (`test.yml`) runs them, and the release workflow runs them again.
+- `npm test` = `node --test tests/*.test.mjs` (`tests/ring.test.mjs`, incl. log and lang checks; `tests/menu.test.mjs` the window view, lang keys, stylesheet scoping and order, no literal revision); `npm run check` syntax-checks scripts. CI (`test.yml`) runs them, and the release workflow runs them again.
 - Pure and tested: geometry, plan/prior-state logic, Remove's clean plan, pop-out/target effect bits, preview layout, migrations, active-GM pick, both shader patches (line presence), art zoom/focus flags, packing and fit maths, form tidy-up. The shader patch, canvas texture, token config UI and menu need a live Foundry world and are untested in Node.
 
 ## Release process
 1. Bump `version` in `module.json` and the `download` URL (`.../releases/download/vX.Y.Z/module.zip`); the manifest URL stays `.../releases/latest/download/module.json`.
 2. Add a `CHANGELOG.md` section. Commit and push to main.
-3. **Agents never tag or publish.** The user publishes the GitHub release; the Release workflow runs tests, sets version/URLs in `module.json` and builds `module.zip` (`module.json scripts assets LICENSE README.md CHANGELOG.md`). A new top-level folder must be added to the workflow zip step.
+3. **Agents never tag or publish.** The user publishes the GitHub release; the Release workflow runs tests, sets version/URLs in `module.json` and builds `module.zip` (`module.json scripts styles assets lang vendor LICENSE README.md CHANGELOG.md`, minus core's dev-only parts). A new top-level folder must be added to the workflow zip step.
 
 ## Rules
 - Public repo: no campaign names, no game-publisher (WoW/Blizzard) wording in user-facing text, no private details (IPs, domains, local paths).

@@ -1,0 +1,19 @@
+/* Ringmaker: only what wanderers-core's shared stylesheet doesn't cover. Scoped to the window's own class; reads core's tokens. */
+.rm-window .rm-body { display: flex; flex-direction: column; gap: 10px; }
+.rm-window .rm-lines { margin: 0; }
+.rm-window .rm-swatch { display: inline-block; width: 0.9em; height: 0.9em; margin-right: 0.35em; vertical-align: middle; border: 1px solid var(--wc-line-strong); border-radius: 2px; }
+.rm-window .rm-look { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.rm-window .rm-preview {
+  position: relative; flex: none; overflow: hidden; border: 1px solid var(--wc-line); border-radius: var(--wc-radius-sm);
+  background: repeating-conic-gradient(var(--wc-surface-2) 0 25%, transparent 0 50%) 0 0 / 16px 16px;
+}
+.rm-window .rm-preview > * { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: none; max-width: none; }
+.rm-window .rm-bkg { border-radius: 50%; }
+.rm-window .rm-ring { object-fit: contain; }
+.rm-window .rm-controls { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.rm-window .rm-field { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.rm-window .rm-field-label { display: flex; justify-content: space-between; color: var(--wc-text-2); }
+.rm-window .rm-field input[type="range"] { width: 100%; }
+.rm-window .rm-check { display: flex; align-items: center; gap: 6px; }
+.rm-window .rm-buttons { flex-wrap: wrap; gap: 8px; }
+.rm-window .rm-foot { justify-content: flex-end; }
