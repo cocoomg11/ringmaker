@@ -2,6 +2,15 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.4.2
+
+- **Security: the whole API is GM only.** `plan()`, `status()` and `removePlan()` used to answer a player with the ring configuration and token counts. Every member of `game.modules.get("ringmaker").api` now shows "GM only" and returns `undefined` to anyone who isn't a GM. GMs are unaffected.
+
+### Untested in Foundry
+
+- As a player, every `api.*` call (including `plan()`, `status()`, `removePlan()`) shows a "GM only" notice and returns `undefined`.
+- As a GM, `plan()`, `status()`, `applyAll()`, `remove()` and the settings menu behave as in 1.4.1.
+
 ## 1.4.1
 
 - **Fixed: a token kept drawing its art outside the ring after pop-out was turned off** when the same update also changed its art framing (for example **Remove Ringmaker's ring**, which deletes all of Ringmaker's flags at once). The token now redraws for both changes; before, it needed a scene reload.

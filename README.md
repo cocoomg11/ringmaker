@@ -120,7 +120,7 @@ Only the active GM makes these changes, so nothing happens twice when several GM
 
 ```js
 const rm = game.modules.get("ringmaker").api;
-rm.plan();                       // { actors, tokens } still to ring, without changing anything
+rm.plan();                       // GM: { actors, tokens } still to ring, without changing anything
 await rm.applyAll({ npcOnly });  // active GM: ring existing tokens
 await rm.remove();               // active GM: undo Ringmaker's changes
 rm.status();                     // { image, mode, scale, size, background, front, targetEffect, shader, band, registered, active, error }
@@ -143,6 +143,8 @@ await rm.fitArt(tokens);          // GM: measure each image and set the zoom tha
 | `setArtFraming(tokens, { zoom, focus })` | experimental | new in 1.4; GM only |
 | `setArtZoom(tokens, zoom)` | experimental | new in 1.4; GM only |
 | `fitArt(tokens)` | experimental | new in 1.4; GM only |
+
+Every member is GM only: as a player, each call shows a "GM only" notice and returns `undefined`. (From 1.4.2; before, `plan()` and `status()` worked for players.)
 
 `tokens` is one or a list of placed tokens, token documents, prototype tokens, actors (their prototype token) or token ids on the viewed scene. `remove({ confirm })` is new in 1.4. Ringmaker fires no hooks of its own and listens only to Foundry's.
 
