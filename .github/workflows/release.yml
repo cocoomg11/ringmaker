@@ -26,8 +26,11 @@ jobs:
             echo "Release tag '$GITHUB_REF_NAME' must look like v1.2.3"; exit 1
           fi
 
+      - name: Vendored wanderers-core matches its pin
+        run: node vendor/wanderers-core/vendor.mjs verify --remote
+
       - name: Unit tests
-        run: node --test
+        run: npm test
 
       - name: Set version and URLs in module.json
         if: github.event_name == 'release'
@@ -44,8 +47,9 @@ jobs:
 
       - name: Build module.zip
         run: |
-          zip -r module.zip module.json scripts assets lang LICENSE README.md CHANGELOG.md
-          for f in module.json scripts/main.mjs assets/token-ring.json; do
+          zip -r module.zip module.json scripts assets lang vendor LICENSE README.md CHANGELOG.md \
+            -x 'vendor/wanderers-core/config/*' 'vendor/wanderers-core/vendor.mjs' 'vendor/wanderers-core/testing/*'
+          for f in module.json scripts/main.mjs assets/token-ring.json vendor/wanderers-core/index.mjs vendor/wanderers-core/styles/wanderers-ui.css; do
             unzip -l module.zip | grep -q " $f$" || { echo "module.zip is missing $f"; exit 1; }
           done
           unzip -l module.zip

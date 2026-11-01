@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
-    "check": "for f in scripts/*.mjs; do node --check \"$f\" || exit 1; done"
+    "test": "node --test tests/*.test.mjs",
+    "check": "for f in scripts/*.mjs; do node --check \"$f\" || exit 1; done",
+    "core:verify": "node vendor/wanderers-core/vendor.mjs verify"
   }
 }

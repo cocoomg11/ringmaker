@@ -20,9 +20,12 @@ jobs:
         with:
           node-version: 22
 
+      - name: Vendored wanderers-core matches its pin
+        run: node vendor/wanderers-core/vendor.mjs verify --remote
+
       # No install step: the tests use only Node's built-in test runner and the module's own scripts.
       - name: Syntax check every script
         run: npm run check
 
       - name: Unit tests
-        run: node --test
+        run: npm test
