@@ -71,3 +71,11 @@ test("window placement: remembered under a valid key, registered at init", async
   assert.match(await read("scripts/main.mjs"), /registerWindowPlacement\(Ring\.ID\)/);
   assert.match(await read("scripts/menu.mjs"), /RememberedWindow\(/);
 });
+
+test("every RINGMAKER.notice / tokenConfig key used in ring.mjs and gm.mjs exists in the lang file", async () => {
+  for (const f of ["scripts/ring.mjs", "scripts/gm.mjs"]) {
+    const src = await read(f);
+    for (const [, k] of src.matchAll(/"(RINGMAKER\.(?:notice|tokenConfig)\.[\w.]+)"/g)) assert.ok(lang[k], k);
+  }
+  for (const k of ["on", "off"]) assert.ok(lang[`RINGMAKER.notice.ring.${k}`]);
+});

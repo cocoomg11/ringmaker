@@ -27,6 +27,10 @@
  */
 import { isActiveGM } from "./gm.mjs";
 import { log } from "./log.mjs";
+import { esc } from "../vendor/wanderers-core/index.mjs";
+
+/** Localized text (called at use time, never at import). */
+const tr = (key, data) => (data ? game.i18n.format(key, data) : game.i18n.localize(key));
 
 export const ID = "ringmaker";
 export const RING_ID = "ringmaker";
@@ -580,8 +584,8 @@ export function addPopOutField(app, element) {
   const src = configSource(app); const on = isPopOut(src);
   const id = `${app.id}-${ID}-${POPOUT}`;
   const div = document.createElement("div"); div.className = "form-group";
-  div.innerHTML = `<label for="${id}">Let art break out of the ring</label><div class="form-fields"><input type="checkbox" id="${id}" name="flags.${ID}.${POPOUT}" ${on ? "checked" : ""}></div>`
-    + `<p class="hint">Ringmaker: token art outside the ring's opening is drawn over the ring instead of trimmed, so cut-out art can reach past the ring. Art inside the opening stays under the ring. Keep the art's own disc inside the opening (about two thirds of the image's width).</p>`;
+  div.innerHTML = `<label for="${id}">${esc(tr("RINGMAKER.tokenConfig.popOut.label"))}</label><div class="form-fields"><input type="checkbox" id="${id}" name="flags.${ID}.${POPOUT}" ${on ? "checked" : ""}></div>`
+    + `<p class="hint">${esc(tr("RINGMAKER.tokenConfig.popOut.hint"))}</p>`;
   group.after(div);
   if (zoomOn()) addArtZoomField(app, root, div, src);
 }
@@ -592,13 +596,13 @@ export function addPopOutField(app, element) {
  */
 function addArtZoomField(app, root, after, src) {
   const cur = artZoom(src); const f = artFocus(src); const base = `${app.id}-${ID}`;
-  const num = (key, label, value, min, max, step) => `<label for="${base}-${key}" style="flex:none">${label}</label><input type="number" id="${base}-${key}" name="flags.${ID}.${key}" value="${value}" min="${min}" max="${max}" step="${step}" style="max-width:5.5em">`;
+  const num = (key, label, value, min, max, step) => `<label for="${base}-${key}" style="flex:none">${esc(label)}</label><input type="number" id="${base}-${key}" name="flags.${ID}.${key}" value="${value}" min="${min}" max="${max}" step="${step}" style="max-width:5.5em">`;
   const div = document.createElement("div"); div.className = "form-group";
-  div.innerHTML = `<label>Art framing</label><div class="form-fields" style="gap:0.4rem; align-items:center">`
-    + num(ARTZOOM, "Zoom", cur, ZOOM_RANGE.min, ZOOM_RANGE.max, 0.01)
-    + num(`${ARTFOCUS}.x`, "Focus X", f.x, 0, 1, 0.01) + num(`${ARTFOCUS}.y`, "Y", f.y, 0, 1, 0.01)
-    + `<button type="button" data-ringmaker="fit" title="Measure the image's opaque part and set the zoom so it fills the ring's opening"><i class="fa-solid fa-compress"></i> Fit</button></div>`
-    + `<p class="hint">Ringmaker: how the art sits inside the ring. Zoom 1 is Foundry's framing (below 1 shows more of the image, above 1 zooms in). Focus is the point of the image (0–1 from the top left) drawn at the ring's centre: put it on the face. Fit sets the zoom so cut-out art just fills the opening. Stored as flags.ringmaker.${ARTZOOM} and .${ARTFOCUS}; zoom 1 and focus 0.5/0.5 clear them.</p>`;
+  div.innerHTML = `<label>${esc(tr("RINGMAKER.tokenConfig.artFraming.label"))}</label><div class="form-fields" style="gap:0.4rem; align-items:center">`
+    + num(ARTZOOM, tr("RINGMAKER.tokenConfig.artFraming.zoom"), cur, ZOOM_RANGE.min, ZOOM_RANGE.max, 0.01)
+    + num(`${ARTFOCUS}.x`, tr("RINGMAKER.tokenConfig.artFraming.focusX"), f.x, 0, 1, 0.01) + num(`${ARTFOCUS}.y`, tr("RINGMAKER.tokenConfig.artFraming.focusY"), f.y, 0, 1, 0.01)
+    + `<button type="button" data-ringmaker="fit" title="${esc(tr("RINGMAKER.tokenConfig.artFraming.fitTitle"))}"><i class="fa-solid fa-compress"></i> ${esc(tr("RINGMAKER.tokenConfig.artFraming.fit"))}</button></div>`
+    + `<p class="hint">${esc(tr("RINGMAKER.tokenConfig.artFraming.hint", { zoomFlag: `flags.${ID}.${ARTZOOM}`, focusFlag: `.${ARTFOCUS}` }))}</p>`;
   after.after(div);
   const zoomInput = div.querySelector(`[name="flags.${ID}.${ARTZOOM}"]`);
   // Live preview: the inputs are form fields, so core's TokenConfig copies their values onto its preview token (app._preview,
@@ -609,9 +613,9 @@ function addArtZoomField(app, root, after, src) {
   div.querySelector("[data-ringmaker=fit]").addEventListener("click", async () => {
     try {
       const z = await fitArtZoom(src?.texture?.src, previewToken() ?? (app.document?.documentName === "Token" ? app.document.object : null));
-      if (z == null) return ui.notifications.warn("Ringmaker: couldn't measure the image.");
+      if (z == null) return ui.notifications.warn(tr("RINGMAKER.notice.measureFailed"));
       zoomInput.value = z; zoomInput.dispatchEvent(new Event("change", { bubbles: true }));
-    } catch (e) { log.error("fit art", e); ui.notifications.warn("Ringmaker: couldn't measure the image."); }
+    } catch (e) { log.error("fit art", e); ui.notifications.warn(tr("RINGMAKER.notice.measureFailed")); }
   });
 }
 
@@ -658,7 +662,7 @@ async function updateTokens(tokens, make) {
 
 /** GM: turns pop-out on or off for tokens (placeables, token documents, prototype tokens, actors, or ids on the viewed scene). */
 export async function setPopOut(tokens, on = true) {
-  if (!game.user.isGM) { ui.notifications.warn("Ringmaker: only a GM can change tokens."); return null; }
+  if (!game.user.isGM) { ui.notifications.warn(tr("RINGMAKER.notice.gmOnly")); return null; }
   return updateTokens(tokens, (src, prefix) => popOutUpdate(src, on, { prefix }));
 }
 
@@ -667,7 +671,7 @@ export async function setPopOut(tokens, on = true) {
  * their flags; a part left out is unchanged.
  */
 export async function setArtFraming(tokens, { zoom, focus } = {}) {
-  if (!game.user.isGM) { ui.notifications.warn("Ringmaker: only a GM can change tokens."); return null; }
+  if (!game.user.isGM) { ui.notifications.warn(tr("RINGMAKER.notice.gmOnly")); return null; }
   return updateTokens(tokens, (src, prefix) => {
     const u = { ...(zoom !== undefined ? artZoomUpdate(src, zoom, { prefix }) : null), ...(focus !== undefined ? artFocusUpdate(src, focus, { prefix }) : null) };
     return Object.keys(u).length ? u : null;
@@ -681,7 +685,7 @@ export const setArtZoom = (tokens, zoom = 1) => setArtFraming(tokens, { zoom });
  * setPopOut). Images that can't be read are skipped.
  */
 export async function fitArt(tokens) {
-  if (!game.user.isGM) { ui.notifications.warn("Ringmaker: only a GM can change tokens."); return null; }
+  if (!game.user.isGM) { ui.notifications.warn(tr("RINGMAKER.notice.gmOnly")); return null; }
   const zooms = new Map();
   for (const d of resolveTokens(tokens)) {
     const src = d.documentName === "Token" ? d._source : d.actor?._source?.prototypeToken; const img = src?.texture?.src;
@@ -736,26 +740,27 @@ export function plan({ npcOnly = mode() === "npc", revert = false } = {}) {
   return { actors, scenes, count, tokens: count - actors.length };
 }
 
-const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+/** Counted phrase from the lang file (`RINGMAKER.window.count.<what>.one|other`). */
+const counted = (what, n) => tr(`RINGMAKER.window.count.${what}.${n === 1 ? "one" : "other"}`, { n });
 async function run(p, verb, quiet) {
   foundryDeletes(p.actors); for (const [, ups] of p.scenes) foundryDeletes(ups);
   for (const c of chunks(p.actors)) await Actor.updateDocuments(c);
   for (const [s, ups] of p.scenes) for (const c of chunks(ups)) await s.updateEmbeddedDocuments("Token", c);
-  if (!quiet || p.count) ui.notifications.info(`Ringmaker: ring ${verb} ${plural(p.actors.length, "actor prototype token")} and ${plural(p.tokens, "placed token")}.`);
+  if (!quiet || p.count) ui.notifications.info(tr(`RINGMAKER.notice.ring.${verb}`, { actors: counted("actors", p.actors.length), tokens: counted("tokens", p.tokens) }));
   return { actors: p.actors.length, tokens: p.tokens };
 }
 
 function gmCheck() {
-  if (!game.user.isGM || !isActiveGM()) { ui.notifications.warn("Ringmaker: only the active GM can change tokens."); return false; }
+  if (!game.user.isGM || !isActiveGM()) { ui.notifications.warn(tr("RINGMAKER.notice.activeGmOnly")); return false; }
   return true;
 }
 
 /** Active GM: turns the ring on for the prototype tokens of matching actors and every matching placed token. Art is untouched. */
 export async function applyAll({ npcOnly = mode() === "npc", quiet = false } = {}) {
   if (!gmCheck()) return null;
-  if (!image()) { ui.notifications.warn("Ringmaker: choose a ring image in the module settings first."); return null; }
+  if (!image()) { ui.notifications.warn(tr("RINGMAKER.notice.noImage")); return null; }
   const p = plan({ npcOnly }); log.debug(`apply: ${p.actors.length} actor prototype tokens, ${p.tokens} placed tokens`);
-  return run(p, "put on", quiet);
+  return run(p, "on", quiet);
 }
 
 /**
@@ -766,12 +771,12 @@ export async function remove({ confirm = false } = {}) {
   if (!gmCheck()) return null;
   const p = plan({ revert: true });
   if (confirm) {
-    const ok = await foundry.applications.api.DialogV2.confirm({ window: { title: "Remove Ringmaker's ring" }, rejectClose: false,
-      content: `<p>Put ${plural(p.actors.length, "actor prototype token")} and ${plural(p.tokens, "placed token")} back the way they were and delete Ringmaker's data on them?</p>` });
+    const ok = await foundry.applications.api.DialogV2.confirm({ window: { title: tr("RINGMAKER.window.remove") }, rejectClose: false,
+      content: `<p>${esc(tr("RINGMAKER.notice.removeConfirm", { actors: counted("actors", p.actors.length), tokens: counted("tokens", p.tokens) }))}</p>` });
     if (!ok) return null;
   }
   log.debug(`remove: ${p.actors.length} actor prototype tokens, ${p.tokens} placed tokens`);
-  return run(p, "taken off", false);
+  return run(p, "off", false);
 }
 
 /** What Remove would change, as counts, without changing anything. */

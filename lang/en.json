@@ -77,5 +77,21 @@
   "RINGMAKER.window.notice.allDone": "Ringmaker: every matching token already has the ring.",
   "RINGMAKER.window.notice.unchanged": "Ringmaker: nothing changed.",
   "RINGMAKER.window.notice.nothingToRemove": "Ringmaker: no token or prototype token has Ringmaker's ring or data.",
-  "RINGMAKER.window.notice.placeReset": "Ringmaker: the window will open at its default position next time."
+  "RINGMAKER.window.notice.placeReset": "Ringmaker: the window will open at its default position next time.",
+  "RINGMAKER.tokenConfig.popOut.label": "Let art break out of the ring",
+  "RINGMAKER.tokenConfig.popOut.hint": "Ringmaker: token art outside the ring's opening is drawn over the ring instead of trimmed, so cut-out art can reach past the ring. Art inside the opening stays under the ring. Keep the art's own disc inside the opening (about two thirds of the image's width).",
+  "RINGMAKER.tokenConfig.artFraming.label": "Art framing",
+  "RINGMAKER.tokenConfig.artFraming.zoom": "Zoom",
+  "RINGMAKER.tokenConfig.artFraming.focusX": "Focus X",
+  "RINGMAKER.tokenConfig.artFraming.focusY": "Y",
+  "RINGMAKER.tokenConfig.artFraming.fit": "Fit",
+  "RINGMAKER.tokenConfig.artFraming.fitTitle": "Measure the image's opaque part and set the zoom so it fills the ring's opening",
+  "RINGMAKER.tokenConfig.artFraming.hint": "Ringmaker: how the art sits inside the ring. Zoom 1 is Foundry's framing (below 1 shows more of the image, above 1 zooms in). Focus is the point of the image (0–1 from the top left) drawn at the ring's centre: put it on the face. Fit sets the zoom so cut-out art just fills the opening. Stored as {zoomFlag} and {focusFlag}; zoom 1 and focus 0.5/0.5 clear them.",
+  "RINGMAKER.notice.gmOnly": "Ringmaker: only a GM can change tokens.",
+  "RINGMAKER.notice.activeGmOnly": "Ringmaker: only the active GM can change tokens.",
+  "RINGMAKER.notice.noImage": "Ringmaker: choose a ring image in the module settings first.",
+  "RINGMAKER.notice.measureFailed": "Ringmaker: couldn't measure the image.",
+  "RINGMAKER.notice.ring.on": "Ringmaker: ring put on {actors} and {tokens}.",
+  "RINGMAKER.notice.ring.off": "Ringmaker: ring taken off {actors} and {tokens}.",
+  "RINGMAKER.notice.removeConfirm": "Put {actors} and {tokens} back the way they were and delete Ringmaker's data on them?"
 }

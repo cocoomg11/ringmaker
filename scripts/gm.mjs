@@ -23,11 +23,11 @@ export function isActiveGM() {
  * Wraps every member of an API object so that a non-GM gets a notice and undefined, and nothing runs. `isGM` and `notify` are
  * functions so the check happens at call time (pure, tested in Node).
  */
-export function gateApi(api, { isGM = () => !!game.user?.isGM, notify = msg => ui.notifications?.warn(msg) } = {}) {
+export function gateApi(api, { isGM = () => !!game.user?.isGM, notify = msg => ui.notifications?.warn(msg), message = () => game.i18n.localize("RINGMAKER.notice.gmOnly") } = {}) {
   const out = {};
   for (const [name, fn] of Object.entries(api)) {
     out[name] = typeof fn === "function"
-      ? (...args) => { if (!isGM()) { notify("Ringmaker: GM only."); return undefined; } return fn(...args); }
+      ? (...args) => { if (!isGM()) { notify(message()); return undefined; } return fn(...args); }
       : fn;
   }
   return out;

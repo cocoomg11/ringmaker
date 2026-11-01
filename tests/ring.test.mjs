@@ -409,14 +409,14 @@ test("ring class: configureSize records the focus for the shader", () => {
 test("gateApi: every member refuses a non-GM with a notice and undefined, and runs for a GM", () => {
   const calls = [], notes = [];
   const api = { plan: () => { calls.push("plan"); return { actors: 1 }; }, status: () => { calls.push("status"); return { image: "x" }; }, setPopOut: async () => { calls.push("pop"); return 1; } };
-  const player = G.gateApi(api, { isGM: () => false, notify: m => notes.push(m) });
+  const player = G.gateApi(api, { isGM: () => false, notify: m => notes.push(m), message: () => "Ringmaker: GM only." });
   assert.equal(player.plan(), undefined);
   assert.equal(player.status(), undefined);
   assert.equal(player.setPopOut([], true), undefined, "not even a promise: nothing ran");
   assert.deepEqual(calls, [], "no wrapped function ran");
   assert.equal(notes.length, 3);
   assert.match(notes[0], /GM only/);
-  const gm = G.gateApi(api, { isGM: () => true, notify: m => notes.push(m) });
+  const gm = G.gateApi(api, { isGM: () => true, notify: m => notes.push(m), message: () => "Ringmaker: GM only." });
   assert.deepEqual(gm.plan(), { actors: 1 });
   assert.deepEqual(gm.status(), { image: "x" });
   assert.equal(notes.length, 3, "a GM gets no notice");
