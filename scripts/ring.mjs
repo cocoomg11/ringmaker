@@ -26,6 +26,7 @@
  * The helpers at the top take plain objects and are tested in Node; nothing here touches Foundry at import time.
  */
 import { isActiveGM } from "./gm.mjs";
+import { log } from "./log.mjs";
 
 export const ID = "ringmaker";
 export const RING_ID = "ringmaker";
@@ -416,18 +417,22 @@ const zoomOn = () => S("artZoom") !== false;
 const actorOf = t => t.actor ?? game.actors.get(t.actorId) ?? null;
 let texture = null; let loadError = null; let hooked = false; let band = null; let shaderPatched = false;
 
+/** { key: "RINGMAKER.<group>.<key>" } lang keys for a choices map; Foundry localizes the labels. */
+export const langChoices = (group, map) => Object.fromEntries(Object.keys(map).map(k => [k, `RINGMAKER.${group}.${k}`]));
+
 export function registerSettings() {
   const s = (key, name, hint, type, def, extra = {}) => game.settings.register(ID, key, { name, hint, scope: "world", config: true, type, default: def, ...extra });
-  s("image", "Ring image", "A square PNG with a transparent middle (256 × 256 or larger). Used by every token with Foundry's dynamic ring turned on. Leave empty to leave Foundry's own ring alone. Reloads Foundry.", String, "", { filePicker: "image", requiresReload: true });
-  s("targets", "Which tokens", "Which tokens Ringmaker turns the ring on for. NPCs are actors that aren't of the \"character\" type and that no player owns.", String, "npc", { choices: TARGETS });
-  s("newTokens", "Ring new tokens", "Tokens placed from now on get the ring as they're created.", Boolean, true);
-  s("ringSize", "Ring size", "How big the ring is, as a percentage of Foundry's own ring (100 = the same size as core rings). Ringmaker finds the ring band in your image and scales it to this size; the background and the token art follow. Reloads Foundry.", Number, 100, { range: { min: 50, max: 125, step: 1 }, requiresReload: true });
-  s("background", "Background colour", "The colour behind the token art, inside the ring. A token's own ring background colour (Token configuration) is used instead when it has one. Reloads Foundry.", new foundry.data.fields.ColorField({ required: true, nullable: false, blank: false, initial: DEFAULT_BG }), DEFAULT_BG, { requiresReload: true });
-  s("ringInFront", "Ring in front of token art", "Draw the ring over the token art and trim the art to the ring's opening. Turn off for Foundry's own order (art over the ring, so cut-out art can reach past it). Reloads Foundry.", Boolean, true, { requiresReload: true });
-  s("artScale", "Token art size inside the ring", "Foundry's ring subject scale, set on the tokens Ringmaker rings. 1 (Foundry's default) keeps the ring at its normal size; below 1 the ring grows around the art, above 1 it shrinks. A scale you set on a token yourself is kept.", Number, 1, { range: { min: 0.5, max: 1.5, step: 0.01 } });
-  s("artZoom", "Per-token art zoom", "Lets each token's art be zoomed in or out inside the ring (Token configuration › Dynamic Token Ring › Art zoom, and the Fit art button). The zoom is kept in flags.ringmaker.artZoom; with this off every token uses Foundry's framing and the stored zooms are ignored. Reloads Foundry.", Boolean, true, { requiresReload: true });
-  s("targetEffect", "Ring effect on targeted tokens", "While a token with the ring is targeted, use one of Foundry's own ring effects on it: Pulse or Gradient while it stays targeted, or a single Flash in the targeting player's colour. Drawn on each client only; nothing is saved. Off by default. Reloads Foundry.", String, "off", { choices: TARGET_EFFECTS, requiresReload: true });
-  s("existingOnLoad", "Ring existing tokens on load", "Each time the world loads, the active GM puts the ring on any token (and actor prototype token) that should have it and doesn't yet.", Boolean, false);
+  s("image", "RINGMAKER.settings.image.name", "RINGMAKER.settings.image.hint", String, "", { filePicker: "image", requiresReload: true });
+  s("targets", "RINGMAKER.settings.targets.name", "RINGMAKER.settings.targets.hint", String, "npc", { choices: langChoices("targets", TARGETS) });
+  s("newTokens", "RINGMAKER.settings.newTokens.name", "RINGMAKER.settings.newTokens.hint", Boolean, true);
+  s("ringSize", "RINGMAKER.settings.ringSize.name", "RINGMAKER.settings.ringSize.hint", Number, 100, { range: { min: 50, max: 125, step: 1 }, requiresReload: true });
+  s("background", "RINGMAKER.settings.background.name", "RINGMAKER.settings.background.hint", new foundry.data.fields.ColorField({ required: true, nullable: false, blank: false, initial: DEFAULT_BG }), DEFAULT_BG, { requiresReload: true });
+  s("ringInFront", "RINGMAKER.settings.ringInFront.name", "RINGMAKER.settings.ringInFront.hint", Boolean, true, { requiresReload: true });
+  s("artScale", "RINGMAKER.settings.artScale.name", "RINGMAKER.settings.artScale.hint", Number, 1, { range: { min: 0.5, max: 1.5, step: 0.01 } });
+  s("artZoom", "RINGMAKER.settings.artZoom.name", "RINGMAKER.settings.artZoom.hint", Boolean, true, { requiresReload: true });
+  s("targetEffect", "RINGMAKER.settings.targetEffect.name", "RINGMAKER.settings.targetEffect.hint", String, "off", { choices: langChoices("targetEffects", TARGET_EFFECTS), requiresReload: true });
+  s("debugLog", "RINGMAKER.settings.debugLog.name", "RINGMAKER.settings.debugLog.hint", Boolean, false);
+  s("existingOnLoad", "RINGMAKER.settings.existingOnLoad.name", "RINGMAKER.settings.existingOnLoad.hint", Boolean, false);
 }
 
 /** init: with an image chosen, registers the ring configuration, the texture the spritesheet uses, and the hooks. */
@@ -436,10 +441,11 @@ export function init() {
   hooked = true;
   Hooks.on("initializeDynamicTokenRingConfig", cfg => {
     const D = foundry.canvas?.placeables?.tokens?.DynamicRingData;
-    if (!D) return console.warn(`${ID} | dynamic token rings not available`);
+    if (!D) return log.error("dynamic token rings not available");
     const te = targetEffect(); const target = targetBit(te, foundry.canvas.placeables.tokens.TokenRing?.effects);
     const shaderClass = ringShader(); const ringClass = popOutRingClass(undefined, { target, zoom: zoomOn() });
     const framework = { ...(shaderClass ? { shaderClass } : {}), ...(ringClass ? { ringClass } : {}) };
+    log.debug(`registering ring style; shader ${shaderClass ? "patched" : "core"}, pop-out class ${ringClass ? "on" : "off"}, target effect ${te}`);
     cfg.addConfig(RING_ID, new D({ id: RING_ID, label: "Ringmaker", spritesheet: SHEET, ...(Object.keys(framework).length ? { framework } : {}) }));
   });
   // Made the active ring style before the canvas creates its renderer, so core registers Ringmaker's shader plugin itself.
@@ -448,9 +454,9 @@ export function init() {
   Hooks.once("setup", () => {
     const el = document.createElement("canvas"); el.width = SHEET_SIZE.w; el.height = SHEET_SIZE.h;
     texture = PIXI.Texture.from(el);
-    try { PIXI.Assets.add({ alias: SHEET, src: SHEET, data: { texture } }); } catch (e) { console.warn(`${ID} | ring texture`, e); }
+    try { PIXI.Assets.add({ alias: SHEET, src: SHEET, data: { texture } }); } catch (e) { log.error("ring texture", e); }
     try { foundry.canvas.TextureLoader.pinSource?.(SHEET); } catch { }
-    draw(el).catch(e => { loadError = e?.message ?? String(e); console.warn(`${ID} | ring image "${image()}" couldn't be loaded`, e); });
+    draw(el).catch(e => { loadError = e?.message ?? String(e); log.error(`ring image "${image()}" couldn't be loaded`, e); });
   });
   // Foundry picks the ring configuration after the setup hook; use ours before each canvas draw loads its textures.
   Hooks.on("canvasInit", () => {
@@ -494,10 +500,10 @@ const coreShader = () => foundry.canvas.rendering?.shaders?.TokenRingSamplerShad
 /** A subclass of core's ring shader with Ringmaker's changes, or null (core's shader is used) when its source isn't as expected. */
 function ringShader() {
   const Core = coreShader(); const frag = Core && patchShader(Core._batchFragmentShader, { front: front() });
-  if (!frag) { console.warn(`${ID} | core ring shader not as expected; using Foundry's own (art over the ring)`); return null; }
+  if (!frag) { log.error("core ring shader not as expected; using Foundry's own (art over the ring)"); return null; }
   shaderPatched = true;
   const vert = zoomOn() ? patchVertexShader(Core._batchVertexShader) : null;
-  if (zoomOn() && !vert) console.warn(`${ID} | core ring vertex shader not as expected; art focus is off (zoom still works)`);
+  if (zoomOn() && !vert) log.error("core ring vertex shader not as expected; art focus is off (zoom still works)");
   // Where core packs the colour band in each vertex: after the primary attributes (7 floats) and the ring's own 11 before it.
   const bandOffset = (foundry.canvas.rendering.shaders.PrimaryBaseSamplerShader?.batchVertexSize ?? 7) + 11;
   const corePack = Core._packInterleavedGeometry;
@@ -560,7 +566,7 @@ export function popOutRingClass(Core = globalThis.foundry?.canvas?.placeables?.t
     }
   };
   try { forwardPrivateStatics(Sub, Core); } catch (e) {
-    console.warn(`${ID} | couldn't adapt the token ring class; pop-out is off`, e); return null;
+    log.error("couldn't adapt the token ring class; pop-out is off", e); return null;
   }
   return Sub;
 }
@@ -605,7 +611,7 @@ function addArtZoomField(app, root, after, src) {
       const z = await fitArtZoom(src?.texture?.src, previewToken() ?? (app.document?.documentName === "Token" ? app.document.object : null));
       if (z == null) return ui.notifications.warn("Ringmaker: couldn't measure the image.");
       zoomInput.value = z; zoomInput.dispatchEvent(new Event("change", { bubbles: true }));
-    } catch (e) { console.warn(`${ID} | fit art`, e); ui.notifications.warn("Ringmaker: couldn't measure the image."); }
+    } catch (e) { log.error("fit art", e); ui.notifications.warn("Ringmaker: couldn't measure the image."); }
   });
 }
 
@@ -680,7 +686,7 @@ export async function fitArt(tokens) {
   for (const d of resolveTokens(tokens)) {
     const src = d.documentName === "Token" ? d._source : d.actor?._source?.prototypeToken; const img = src?.texture?.src;
     if (!img || zooms.has(img)) continue;
-    try { zooms.set(img, await fitArtZoom(img, d.documentName === "Token" ? d.object : null)); } catch (e) { console.warn(`${ID} | fit art: ${img}`, e); }
+    try { zooms.set(img, await fitArtZoom(img, d.documentName === "Token" ? d.object : null)); } catch (e) { log.error(`fit art: ${img}`, e); }
   }
   return updateTokens(tokens, (src, prefix) => { const z = zooms.get(src?.texture?.src); return z == null ? null : artZoomUpdate(src, z, { prefix }); });
 }
@@ -748,7 +754,8 @@ function gmCheck() {
 export async function applyAll({ npcOnly = mode() === "npc", quiet = false } = {}) {
   if (!gmCheck()) return null;
   if (!image()) { ui.notifications.warn("Ringmaker: choose a ring image in the module settings first."); return null; }
-  return run(plan({ npcOnly }), "put on", quiet);
+  const p = plan({ npcOnly }); log.debug(`apply: ${p.actors.length} actor prototype tokens, ${p.tokens} placed tokens`);
+  return run(p, "put on", quiet);
 }
 
 /**
@@ -763,6 +770,7 @@ export async function remove({ confirm = false } = {}) {
       content: `<p>Put ${plural(p.actors.length, "actor prototype token")} and ${plural(p.tokens, "placed token")} back the way they were and delete Ringmaker's data on them?</p>` });
     if (!ok) return null;
   }
+  log.debug(`remove: ${p.actors.length} actor prototype tokens, ${p.tokens} placed tokens`);
   return run(p, "taken off", false);
 }
 

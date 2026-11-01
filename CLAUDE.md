@@ -34,6 +34,10 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **Calibration target** (from portraits the table liked): face about 40–50 % of the opening wide, eyes a little above the ring's centre, shoulders/neck and action filling the rest, background cropped. Typical portrait zoom 1.1–1.3 with focus on the face; a big creature whose head is at one side of the picture needs zoom 2–2.5 with the focus on the head.
 - **Per-actor ring image: not done.** v14 `TokenRing` has one static `baseTexture`/`texturesData` per ring config (one spritesheet); per-token `ringName`/`ringUVs` are set inside `configureSize`, undocumented. A safe version would need a fixed-slot atlas (N frames in the JSON, the canvas texture drawn with N images) plus overriding `ringName`/`ringUVs` after `super.configureSize()`. Don't ship without a live check and an API that documents those fields.
 
+## 1.5 notes
+- **Logging:** all console output goes through `scripts/log.mjs` (`log.error` always, `log.debug` only while the world setting `debugLog` is on; a throwing read counts as off). A test fails on any raw `console.*` elsewhere. `debugLog` is the key Wanderer's Satchel's adapter expects (`debugSetting` `{ namespace: "ringmaker", key: "debugLog" }`).
+- **Localization:** setting/menu strings are `RINGMAKER.*` keys in `lang/en.json` (declared in `module.json` `languages`; the release zip includes `lang`). `langChoices` maps choices to keys; the `TARGETS`/`TARGET_EFFECTS` English maps stay for the menu HTML, which is still English.
+
 ## House practices
 - **Tag format:** releases are tagged `vMAJOR.MINOR.PATCH`; the release workflow fails early on anything else.
 - **Compatibility:** `module.json` `compatibility` has `minimum` and `verified` set honestly (13 / 14). No `relationships.systems`: the module is system-agnostic.
@@ -45,7 +49,7 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **Releases:** end with a live checklist (what needs a live Foundry world to verify) in the changelog or handoff.
 
 ## Tests
-- `npm test` = `node --test` (`tests/ring.test.mjs`); `npm run check` syntax-checks scripts. CI (`test.yml`) runs them, and the release workflow runs them again.
+- `npm test` = `node --test` (`tests/ring.test.mjs`, incl. log and lang checks); `npm run check` syntax-checks scripts. CI (`test.yml`) runs them, and the release workflow runs them again.
 - Pure and tested: geometry, plan/prior-state logic, Remove's clean plan, pop-out/target effect bits, preview layout, migrations, active-GM pick, both shader patches (line presence), art zoom/focus flags, packing and fit maths, form tidy-up. The shader patch, canvas texture, token config UI and menu need a live Foundry world and are untested in Node.
 
 ## Release process

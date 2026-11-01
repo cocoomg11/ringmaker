@@ -423,3 +423,43 @@ test("gateApi: every member refuses a non-GM with a notice and undefined, and ru
   let isGM = false; const live = G.gateApi(api, { isGM: () => isGM, notify() { } });
   assert.equal(live.plan(), undefined); isGM = true; assert.deepEqual(live.plan(), { actors: 1 }, "checked at call time");
 });
+
+test("log: errors always log; debug only while the setting is on; a throwing setting counts as off", async () => {
+  const { createLog, DEBUG_KEY } = await import("../scripts/log.mjs");
+  const calls = []; const con = { debug: (...a) => calls.push(["debug", ...a]), error: (...a) => calls.push(["error", ...a]) };
+  let on = false; const lg = createLog(() => on, con);
+  lg.debug("a"); lg.error("b", 1);
+  assert.deepEqual(calls, [["error", "ringmaker |", "b", 1]], "off: only the error");
+  on = true; lg.debug("c");
+  assert.deepEqual(calls.at(-1), ["debug", "ringmaker |", "c"]);
+  const boom = createLog(() => { throw new Error("not registered"); }, con); calls.length = 0;
+  boom.debug("x"); boom.error("y");
+  assert.deepEqual(calls.map(c => c[0]), ["error"]);
+  assert.equal(DEBUG_KEY, "debugLog", "the key Wanderer's Satchel looks for");
+});
+
+test("debugLog setting: registered as a world Boolean, off by default, localized; lang file has every key", async () => {
+  const lang = await json("lang/en.json");
+  const reg = []; globalThis.game = { settings: { register: (ns, key, d) => reg.push({ ns, key, ...d }) } };
+  globalThis.foundry = { data: { fields: { ColorField: class { } } } };
+  R.registerSettings();
+  const d = reg.find(r => r.key === "debugLog");
+  assert.ok(d, "debugLog is registered");
+  assert.equal(d.ns, "ringmaker"); assert.equal(d.scope, "world"); assert.equal(d.type, Boolean); assert.equal(d.default, false);
+  for (const r of reg) {
+    assert.ok(lang[r.name], `lang has ${r.name}`); assert.ok(lang[r.hint], `lang has ${r.hint}`);
+    for (const v of Object.values(r.choices ?? {})) assert.ok(lang[v], `lang has ${v}`);
+  }
+  const mod = await json("module.json");
+  assert.deepEqual(mod.languages, [{ lang: "en", name: "English", path: "lang/en.json" }]);
+  delete globalThis.game; delete globalThis.foundry;
+});
+
+test("no raw console calls outside log.mjs", async () => {
+  const { readdir } = await import("node:fs/promises");
+  for (const f of await readdir(new URL("../scripts/", import.meta.url))) {
+    if (f === "log.mjs" || !f.endsWith(".mjs")) continue;
+    const src = await readFile(new URL(`../scripts/${f}`, import.meta.url), "utf8");
+    assert.ok(!/\bconsole\.(log|warn|error|debug|info)\b/.test(src), `${f} uses console directly`);
+  }
+});

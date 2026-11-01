@@ -25,7 +25,7 @@ export const API = gateApi(RAW_API);
 Hooks.once("init", () => {
   Ring.registerSettings();
   game.settings.registerMenu(Ring.ID, "menu", {
-    name: "Ringmaker tools", label: "Open Ringmaker", hint: "Apply the ring to tokens already in the world, or remove Ringmaker's ring.",
+    name: "RINGMAKER.menu.name", label: "RINGMAKER.menu.label", hint: "RINGMAKER.menu.hint",
     icon: "fa-solid fa-circle-notch", type: RingmakerMenu, restricted: true
   });
   game.modules.get(Ring.ID).api = API;

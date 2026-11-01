@@ -2,7 +2,15 @@
 
 Use your own ring image with [Foundry VTT](https://foundryvtt.com)'s dynamic token rings.
 
-Pick one ring image and Ringmaker registers it as a dynamic ring style, so it's drawn by Foundry itself rather than as an overlay. The ring is turned on for NPC tokens (or every token) as they're placed, and for tokens already in the world with one button. Token art and actor portraits are never changed, and **Remove Ringmaker's ring** puts back exactly what each token had before.
+Pick one ring image and Ringmaker registers it as a dynamic ring style, so Foundry draws it itself rather than as an overlay. With it you can:
+
+- ring all your NPCs at once (or every token), including new tokens as you place them;
+- set the ring's size and the colour behind the art;
+- let a token's art break out of the frame;
+- frame each token's art inside the ring (zoom and focus);
+- script it all through a GM-only API.
+
+Token art and actor portraits are never changed, and **Remove Ringmaker's ring** puts back exactly what each token had before.
 
 Works with any game system.
 
@@ -68,6 +76,7 @@ All in **Game Settings › Configure Settings › Ringmaker** (world settings, G
 | Token art size inside the ring | 1 | Foundry's ring subject scale on the tokens Ringmaker rings. 1 keeps the ring at its normal size; below 1 the ring grows around the art, above 1 it shrinks. A scale you set on a token yourself is kept. |
 | Per-token art zoom | on | Lets each token have its own art framing (zoom and focus point, see below). Off ignores stored framings. Reloads Foundry. |
 | Ring effect on targeted tokens | Off | *Off*, *Pulse*, *Gradient* or *Flash once*. See below. Reloads Foundry. |
+| Debug logging | off | Writes what Ringmaker is doing to the browser console. Errors are always logged. Wanderer's Satchel can switch it with your other modules. |
 | Ring existing tokens on load | off | Each time the world loads, the active GM rings any matching token that doesn't have the ring yet. |
 
 ### Art that breaks out of the ring
@@ -156,7 +165,7 @@ Only under its own namespace, and only when you apply the ring or tick pop-out:
 - `flags.ringmaker.artZoom` (number) and `flags.ringmaker.artFocus` (`{ x, y }`) on tokens and prototype tokens: the art framing (from 1.4). **Remove Ringmaker's ring** deletes them; zoom 1 or focus 0.5 / 0.5 in the token configuration clears them too.
 - `flags.ringmaker.popOut` (boolean) on tokens and prototype tokens: the pop-out checkbox. **Remove Ringmaker's ring** deletes it (from 1.3); you can also untick the box or run `await rm.setPopOut(tokens, false)`. It does nothing while no ring image is set.
 - Remove deletes the whole `flags.ringmaker` namespace on each token and prototype token it touches, so nothing of Ringmaker's is left on them.
-- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, ring existing on load). **Remove Ringmaker's ring** does not reset these; they go with the module's data.
+- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, debug logging, ring existing on load). **Remove Ringmaker's ring** does not reset these; they go with the module's data.
 - The target effect writes nothing: it is drawn on each client only.
 - Ringmaker also sets Foundry's own `ring.enabled` and `ring.subject.scale` on tokens it rings; Remove puts them back.
 

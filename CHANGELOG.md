@@ -2,6 +2,19 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.5.0
+
+- **New setting: Debug logging** (`debugLog`, world, off by default). Ringmaker's console output now goes through it: errors and fallbacks are always logged; ring registration and apply/remove counts are logged only while it is on. Wanderer's Satchel finds the setting and can switch it for you.
+- **Localization:** setting names, hints, choices and the menu label are now in `lang/en.json` (English only for now; the Ringmaker window itself is still English).
+- Updated the module description and README intro.
+
+### Untested in Foundry
+
+- The setting appears under Configure Settings › Ringmaker with its English name and hint, and the choice lists (Which tokens, Ring effect) still show their labels.
+- With Debug logging on, the console shows `ringmaker |` debug lines on load and on Apply / Remove; with it off, none (errors still show).
+- Wanderer's Satchel's Ringmaker page shows the Debug logging switch and it changes this setting.
+- `lang/` is in the release zip.
+
 ## 1.4.2
 
 - **Security: the whole API is GM only.** `plan()`, `status()` and `removePlan()` used to answer a player with the ring configuration and token counts. Every member of `game.modules.get("ringmaker").api` now shows "GM only" and returns `undefined` to anyone who isn't a GM. GMs are unaffected.
