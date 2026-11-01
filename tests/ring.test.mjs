@@ -420,7 +420,7 @@ test("gateApi: every member refuses a non-GM with a notice and undefined, and ru
   assert.deepEqual(gm.plan(), { actors: 1 });
   assert.deepEqual(gm.status(), { image: "x" });
   assert.equal(notes.length, 3, "a GM gets no notice");
-  let isGM = false; const live = G.gateApi(api, { isGM: () => isGM, notify() { } });
+  let isGM = false; const live = G.gateApi(api, { isGM: () => isGM, notify() { }, message: () => "x" });
   assert.equal(live.plan(), undefined); isGM = true; assert.deepEqual(live.plan(), { actors: 1 }, "checked at call time");
 });
 
