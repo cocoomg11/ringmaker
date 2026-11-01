@@ -2,6 +2,18 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.6.1 (2026-11-01)
+
+- **The token configuration fields are localized.** The "Let art break out of the ring" box, the Art framing row (Zoom, Focus X / Y, Fit, the Fit tooltip) and their hints now come from `lang/en.json` (`RINGMAKER.tokenConfig.*`), as do the notices (only a GM can change tokens, choose a ring image first, couldn't measure the image, ring put on / taken off with counts) and the Remove confirm dialog (`RINGMAKER.notice.*`). English only for now; the wording is unchanged.
+- The API's "GM only" notice is a lang key too (`RINGMAKER.notice.gmOnly`).
+- Under the hood: CI now calls the shared `module-checks.yml` of wanderers-core 0.5.1 (pin check, syntax check, tests; lint and type check stay off until the module has ESLint and tsc set up). A test checks that every lang key used in the scripts exists.
+
+### Untested in Foundry
+
+- Open a token's configuration (Appearance › Dynamic Token Ring) as a GM: the pop-out box and the Art framing row show readable English, no raw `RINGMAKER.*` key, and Fit still works (and, on an unreadable image, shows the "couldn't measure" notice).
+- Apply and Remove through the API/window: the notice reads "ring put on N actor prototype tokens and N placed tokens"; the Remove confirm dialog title and text are right.
+- A player calling an API member gets the "only a GM" notice.
+
 ## 1.6.0 (2026-11-01)
 
 - **New look for the Ringmaker window.** "Ringmaker tools" now uses the shared look of the author's other modules (a page head with a status badge, panels for the ring image, the preview and the tokens, status lines and matching buttons), following Foundry's light and dark themes. Every control is still there: the live ring preview with Ring size, Background colour and Ring in front, Save and reload, Apply and Remove (with their confirm dialogs).

@@ -11,21 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Vendored wanderers-core matches its pin
-        run: node vendor/wanderers-core/vendor.mjs verify --remote
-
-      # No install step: the tests use only Node's built-in test runner and the module's own scripts.
-      - name: Syntax check every script
-        run: npm run check
-
-      - name: Unit tests
-        run: npm test
+  checks:
+    uses: cocoomg11/wanderers-core/.github/workflows/module-checks.yml@v0.5.1
+    with:
+      # Ringmaker has no ESLint or tsc setup yet (and no dev dependencies); the pin check, syntax check and tests run.
+      lint: false
+      types: false

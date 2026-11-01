@@ -2,7 +2,7 @@
   "id": "ringmaker",
   "title": "Ringmaker",
   "description": "Use your own ring image for Foundry's dynamic token rings. Ring all your NPCs at once (or every token), set the ring size, let art break out of the frame, and frame each token's art with zoom and focus. Remove puts everything back. GM-only API. Works with any game system.",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "authors": [
     {
       "name": "cocoomg11"
@@ -28,7 +28,7 @@
   ],
   "url": "https://github.com/cocoomg11/ringmaker",
   "manifest": "https://github.com/cocoomg11/ringmaker/releases/latest/download/module.json",
-  "download": "https://github.com/cocoomg11/ringmaker/releases/download/v1.6.0/module.zip",
+  "download": "https://github.com/cocoomg11/ringmaker/releases/download/v1.6.1/module.zip",
   "bugs": "https://github.com/cocoomg11/ringmaker/issues",
   "license": "LICENSE",
   "readme": "README.md",
