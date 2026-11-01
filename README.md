@@ -6,6 +6,16 @@ Pick one ring image and Ringmaker registers it as a dynamic ring style, so it's 
 
 Works with any game system.
 
+<!-- screenshot: a scene with several NPC tokens wearing the custom ring -->
+
+## Contents
+
+- [Install](#install) · [Quick start](#quick-start) · [Compatibility](#compatibility)
+- [The ring image](#the-ring-image) · [Settings](#settings)
+- [Art that breaks out of the ring](#art-that-breaks-out-of-the-ring) · [Art framing](#art-framing-zoom-and-focus-per-token) · [Ring effect on targeted tokens](#ring-effect-on-targeted-tokens)
+- [The Ringmaker window](#the-ringmaker-window) · [One ring image per world](#one-ring-image-per-world) · [How it fits Foundry's ring](#how-it-fits-foundrys-ring)
+- [API](#api) · [Data Ringmaker writes](#data-ringmaker-writes) · [Licence](#licence)
+
 ## Install
 
 In Foundry: **Add-on Modules › Install Module**, paste this manifest URL and click Install:
@@ -15,6 +25,17 @@ https://github.com/cocoomg11/ringmaker/releases/latest/download/module.json
 ```
 
 Then enable **Ringmaker** in your world.
+
+## Quick start
+
+1. **Enable it.** In your world, open **Game Settings › Manage Modules**, tick **Ringmaker** and save.
+2. **Pick your ring image.** Go to **Game Settings › Configure Settings › Ringmaker** and choose a **Ring image**: a square PNG with a transparent middle (see [The ring image](#the-ring-image)). Foundry reloads. Until you pick one, Ringmaker does nothing.
+3. **Choose which tokens.** **Which tokens** starts on *NPCs only*. Switch it to *Every token* if you want player characters ringed too. Leave **Ring new tokens** on so tokens you place from now on get the ring.
+4. **Check the look.** Click **Open Ringmaker** on the same page. Move **Ring size**, pick a **Background colour**, and watch the preview. Click **Save and reload** when you like it.
+5. **Ring what's already there.** In the same window, click **Apply ring to existing tokens** and confirm. (Changed your mind later? **Remove Ringmaker's ring** puts everything back.)
+6. **Try it.** Drag an NPC onto a scene: it arrives with your ring. For a token whose art sits badly in the ring, open its Token Configuration, go to **Appearance › Dynamic Token Ring** and use the **Art framing** row (Zoom, Focus, **Fit**).
+
+<!-- screenshot: Game Settings page for Ringmaker with the Ring image picker and the Open Ringmaker button -->
 
 ## Compatibility
 
@@ -51,11 +72,15 @@ All in **Game Settings › Configure Settings › Ringmaker** (world settings, G
 
 ### Art that breaks out of the ring
 
+<!-- screenshot: a pop-out token (art reaching past the ring) next to a normal one -->
+
 For cut-out token art (say a dragon whose head and wings reach past a round frame), tick **Let art break out of the ring** in the token's configuration (Appearance › Dynamic Token Ring; GM only, placed or prototype tokens). Art outside the ring's opening is then drawn over the ring instead of trimmed, so the parts that reach past it show in front of the ring; art inside the opening stays under the ring as usual. Give the art a transparent background and keep its own disc inside the ring's opening (about two thirds of the image's width, centred). Other tokens aren't affected. It needs **Ring in front of token art**; with that off, every token's art is already drawn over the ring. The choice is kept in `flags.ringmaker.popOut`.
 
 ### Art framing: zoom and focus per token
 
-Token art is often framed for a square, not for a ring: a face off-centre, or a big creature where the head is one corner of the picture. In the token's configuration (Appearance › Dynamic Token Ring, GM only, placed or prototype tokens) the **Art framing** row sets, for that token only:
+Token art is often framed for a square, not for a ring: a face off-centre, or a big creature where the head is one corner of the picture. <!-- screenshot: the Art framing row in the Token Configuration (Zoom, Focus X / Y, Fit) -->
+
+In the token's configuration (Appearance › Dynamic Token Ring, GM only, placed or prototype tokens) the **Art framing** row sets, for that token only:
 
 - **Zoom**: how big the art is inside the ring. 1 is Foundry's framing; above 1 zooms in (crops the background away), below 1 shows more of the image.
 - **Focus X / Y**: the point of the image (0–1 from the top left) that is drawn at the ring's centre. Put it on the face: 0.5 / 0.5 is the image's centre.
@@ -69,7 +94,11 @@ A good target, from portraits that frame well: the face about 40–50 % of the r
 
 With **Ring effect on targeted tokens** set, a token with Ringmaker's ring gets one of Foundry's own ring effects while it is targeted: **Pulse** or **Gradient** (Foundry's ring pulse and gradient effects) for as long as anyone targets it, or **Flash once** (Foundry's ring flash, in the targeting player's colour) at the moment it's targeted. Each client draws it for itself and nothing is saved to the world. Tokens without the ring are ignored. Off by default; while it's off Ringmaker doesn't listen for targeting at all.
 
-**Open Ringmaker** (same page) shows what's set, a live preview and two buttons:
+### The Ringmaker window
+
+**Open Ringmaker** (same page as the settings) shows what's set, a live preview and three buttons:
+
+<!-- screenshot: the Open Ringmaker window with the live preview -->
 
 - **Ring look (preview)**: a sample token picture with your ring image over it. Move **Ring size**, pick a **Background colour** or tick **Ring in front of token art** and the preview follows at once, before anything is saved. **Save and reload** stores those three settings and asks to reload Foundry. The preview uses the same layout maths as the ring itself, so the ring, background and art sizes match; it doesn't show a token's own background colour, ring effects or the soft edges Foundry's shader draws.
 - **Apply ring to existing tokens**: asks first, then turns the ring on for the prototype tokens of matching actors and every matching token on every scene.
@@ -125,8 +154,8 @@ Only under its own namespace, and only when you apply the ring or tick pop-out:
 - `flags.ringmaker.artZoom` (number) and `flags.ringmaker.artFocus` (`{ x, y }`) on tokens and prototype tokens: the art framing (from 1.4). **Remove Ringmaker's ring** deletes them; zoom 1 or focus 0.5 / 0.5 in the token configuration clears them too.
 - `flags.ringmaker.popOut` (boolean) on tokens and prototype tokens: the pop-out checkbox. **Remove Ringmaker's ring** deletes it (from 1.3); you can also untick the box or run `await rm.setPopOut(tokens, false)`. It does nothing while no ring image is set.
 - Remove deletes the whole `flags.ringmaker` namespace on each token and prototype token it touches, so nothing of Ringmaker's is left on them.
-- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, ring existing on load).
-- The target effect writes nothing: it is drawn on each client only. They are removed from the world with the module's data, not by Remove.
+- World settings under `ringmaker` (image, which tokens, ring new tokens, ring size, background colour, ring in front, art size, per-token art zoom, ring effect on targeted tokens, ring existing on load). **Remove Ringmaker's ring** does not reset these; they go with the module's data.
+- The target effect writes nothing: it is drawn on each client only.
 - Ringmaker also sets Foundry's own `ring.enabled` and `ring.subject.scale` on tokens it rings; Remove puts them back.
 
 ## About
