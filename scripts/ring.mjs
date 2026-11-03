@@ -28,7 +28,7 @@
 import { isActiveGM } from "./gm.mjs";
 import { log } from "./log.mjs";
 import { esc } from "../vendor/wanderers-core/index.mjs";
-import { countPhrase } from "./menu-view.mjs";
+import { countPhrase, ringNotice } from "./menu-view.mjs";
 
 /** Localized text (called at use time, never at import). */
 const tr = (key, data) => (data ? game.i18n.format(key, data) : game.i18n.localize(key));
@@ -747,7 +747,7 @@ async function run(p, verb, quiet) {
   foundryDeletes(p.actors); for (const [, ups] of p.scenes) foundryDeletes(ups);
   for (const c of chunks(p.actors)) await Actor.updateDocuments(c);
   for (const [s, ups] of p.scenes) for (const c of chunks(ups)) await s.updateEmbeddedDocuments("Token", c);
-  if (!quiet || p.count) ui.notifications.info(tr(`RINGMAKER.notice.ring.${verb}`, { what: counted(p.actors.length, p.tokens) }));
+  if (!quiet || p.count) ui.notifications.info(ringNotice(tr, verb, p.actors.length, p.tokens));
   return { actors: p.actors.length, tokens: p.tokens };
 }
 
@@ -771,7 +771,7 @@ export async function applyAll({ npcOnly = mode() === "npc", quiet = false } = {
 export async function remove({ confirm = false } = {}) {
   if (!gmCheck()) return null;
   const p = plan({ revert: true });
-  if (confirm) {
+  if (confirm && p.count) { // nothing to remove: no dialog, run() says so
     const ok = await foundry.applications.api.DialogV2.confirm({ window: { title: tr("RINGMAKER.window.remove") }, rejectClose: false,
       content: `<p>${esc(tr("RINGMAKER.notice.removeConfirm", { what: counted(p.actors.length, p.tokens) }))}</p>` });
     if (!ok) return null;

@@ -36,6 +36,17 @@ export const countPhrase = (t, actors, tokens) => {
 };
 
 /**
+ * The notice after Apply (`on`) or Remove (`off`): "Ringmaker: ring put on 1 placed token.", or "Ringmaker: nothing to change." when
+ * both counts are zero (never a sentence with an empty count).
+ * @param {(key: string, data?: object) => string} t
+ * @param {"on" | "off"} verb
+ */
+export const ringNotice = (t, verb, actors, tokens) => {
+  const what = countPhrase(t, actors, tokens);
+  return what ? t(`RINGMAKER.notice.ring.${verb}`, { what }) : t("RINGMAKER.notice.ring.none");
+};
+
+/**
  * The overall state shown as the page head's badge.
  * @param {{ image?: string, error?: unknown, active?: boolean | null }} st Ring.status()
  * @returns {{ tone: "ok" | "warn" | "bad", key: string }}

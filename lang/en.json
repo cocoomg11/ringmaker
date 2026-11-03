@@ -97,5 +97,6 @@
   "RINGMAKER.notice.measureFailed": "Ringmaker: couldn't measure the image.",
   "RINGMAKER.notice.ring.on": "Ringmaker: ring put on {what}.",
   "RINGMAKER.notice.ring.off": "Ringmaker: ring taken off {what}.",
+  "RINGMAKER.notice.ring.none": "Ringmaker: nothing to change.",
   "RINGMAKER.notice.removeConfirm": "Put {what} back the way they were and delete Ringmaker's data on them?"
 }

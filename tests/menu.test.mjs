@@ -101,3 +101,13 @@ test("main.mjs exposes api.open and ring.mjs gives the Fit button an aria-label"
   assert.match(await read("scripts/main.mjs"), /open: \(\) => openWindow\(\)/);
   assert.match(await read("scripts/ring.mjs"), /aria-label="\$\{esc\(tr\("RINGMAKER\.tokenConfig\.artFraming\.fitLabel"\)\)\}"/);
 });
+
+test("ringNotice: counted sentence, or 'nothing to change' when both counts are zero", () => {
+  assert.equal(V.ringNotice(t, "on", 0, 1), "Ringmaker: ring put on 1 placed token.");
+  assert.equal(V.ringNotice(t, "off", 2, 1), "Ringmaker: ring taken off 2 actor prototype tokens and 1 placed token.");
+  for (const verb of ["on", "off"]) {
+    const msg = V.ringNotice(t, verb, 0, 0);
+    assert.equal(msg, "Ringmaker: nothing to change.");
+    assert.doesNotMatch(msg, /MISSING|\{|put on \./);
+  }
+});

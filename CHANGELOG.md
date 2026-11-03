@@ -2,6 +2,11 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.6.3 (2026-11-02)
+
+- **No more "Ringmaker: ring put on ." with nothing after it.** When Apply or Remove has nothing to change, the notice now reads "Ringmaker: nothing to change." instead of a sentence with an empty count. Remove with `confirm` skips its dialog when there is nothing to remove.
+- Untested in Foundry: Apply when every matching token already has the ring, and Remove when nothing has Ringmaker data (from the window and from `api.applyAll()` / `api.remove({ confirm: true })`) show "nothing to change" with no dialog; Apply or Remove with something to change still shows the counted notice.
+
 ## 1.6.2 (2026-11-01)
 
 - **Token configuration wording.** The pop-out box is now labelled "Art breaks out of ring" (it no longer wraps mid-phrase; the detail stays in its hint). The Art framing hint no longer ends with developer text about flag names (they are listed in the README under *Data Ringmaker writes*). The Fit button has a localized `aria-label` as well as its tooltip.
