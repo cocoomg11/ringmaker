@@ -715,8 +715,11 @@ async function draw(el) {
   loadError = band ? null : "no ring band found in the image (it needs a transparent middle); drawn to fit the frame";
 }
 
+/** Load: the active GM rings existing tokens. The plan is made once (it walks every actor and token) and used for the writes. */
 export function ready() {
-  if (image() && S("existingOnLoad") && isActiveGM() && plan().count) applyAll({ quiet: true });
+  if (!image() || !S("existingOnLoad") || !isActiveGM()) return undefined;
+  const p = plan();
+  return p.count ? applyPlan(p, true) : undefined;
 }
 
 /** Every token source that should get the ring (or come back), without changing anything. */
@@ -760,7 +763,12 @@ function gmCheck() {
 export async function applyAll({ npcOnly = mode() === "npc", quiet = false } = {}) {
   if (!gmCheck()) return null;
   if (!image()) { ui.notifications.warn(tr("RINGMAKER.notice.noImage")); return null; }
-  const p = plan({ npcOnly }); log.debug(`apply: ${p.actors.length} actor prototype tokens, ${p.tokens} placed tokens`);
+  return applyPlan(plan({ npcOnly }), quiet);
+}
+
+/** Writes a plan made by `plan()` (ring on). Callers have done the GM and image checks. Not on the API. */
+function applyPlan(p, quiet) {
+  log.debug(`apply: ${p.actors.length} actor prototype tokens, ${p.tokens} placed tokens`);
   return run(p, "on", quiet);
 }
 

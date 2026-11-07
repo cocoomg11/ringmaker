@@ -2,9 +2,11 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
-## Unreleased
+## 1.6.4 (2026-11-07)
 
-- Under the hood: the Release workflow now has a read-only build job and a separate upload job (the only one that can write to the release), with top-level `permissions: contents: read` and every action pinned by commit SHA. Same tag check, version/URL setting and zip contents as before. No change to the module itself.
+- **Faster load with "ring existing tokens on load".** The active GM's load check walked every actor and placed token twice (once to count, once more to apply). It now makes the plan once and writes it. Same result and same quiet notice; nothing else changes.
+- Under the hood: the Release workflow now has a read-only build job and a separate upload job (the only one that can write to the release), with top-level `permissions: contents: read` and every action pinned by commit SHA. Same tag check, version/URL setting and zip contents as before.
+- Untested in Foundry: with a ring image and *ring existing tokens on load* on, place a new NPC token with the ring off and reload as the GM: it gets the ring and the counted notice shows once; reload again: no notice, nothing written; a second GM tab writes nothing.
 
 ## 1.6.3 (2026-11-02)
 

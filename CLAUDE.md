@@ -64,7 +64,7 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 
 ## Tests
 - `npm test` = `node --test tests/*.test.mjs` (`tests/ring.test.mjs`, incl. log and lang checks; `tests/menu.test.mjs` the window view, lang keys, stylesheet scoping and order, no literal revision); `npm run check` syntax-checks scripts. CI (`test.yml`) runs them, and the release workflow runs them again.
-- Pure and tested: geometry, plan/prior-state logic, Remove's clean plan, pop-out/target effect bits, preview layout, migrations, active-GM pick, both shader patches (line presence), art zoom/focus flags, packing and fit maths, form tidy-up. The shader patch, canvas texture, token config UI and menu need a live Foundry world and are untested in Node.
+- Pure and tested: geometry, plan/prior-state logic, `ready()` makes one plan and writes it (1.6.4, fake `game`), Remove's clean plan, pop-out/target effect bits, preview layout, migrations, active-GM pick, both shader patches (line presence), art zoom/focus flags, packing and fit maths, form tidy-up. The shader patch, canvas texture, token config UI and menu need a live Foundry world and are untested in Node.
 
 ## Release process
 1. Bump `version` in `module.json` and the `download` URL (`.../releases/download/vX.Y.Z/module.zip`); the manifest URL stays `.../releases/latest/download/module.json`.

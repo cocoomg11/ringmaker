@@ -463,3 +463,38 @@ test("no raw console calls outside log.mjs", async () => {
     assert.ok(!/\bconsole\.(log|warn|error|debug|info)\b/.test(src), `${f} uses console directly`);
   }
 });
+
+test("1.6.4 ready: the load plan is made once (one walk over actors and scenes) and its updates are written", async () => {
+  const saved = { game: globalThis.game, Actor: globalThis.Actor, ui: globalThis.ui };
+  let actorWalks = 0, sceneWalks = 0; const writes = []; const tokenWrites = [];
+  const actors = [{ id: "a1", type: "npc", hasPlayerOwner: false, _source: { prototypeToken: tok() } }];
+  const tokens = [{ id: "t1", actor: actors[0], _source: tok() }];
+  const scene = { tokens, updateEmbeddedDocuments: async (k, u) => { tokenWrites.push([k, u]); } };
+  const gm = { id: "g1", isGM: true, active: true };
+  const settings = { image: "ring.webp", existingOnLoad: true, targets: "npc", artScale: 1 };
+  try {
+    globalThis.game = {
+      settings: { get: (ns, k) => settings[k] },
+      actors: { [Symbol.iterator]() { actorWalks++; return actors[Symbol.iterator](); }, get: () => null },
+      scenes: { [Symbol.iterator]() { sceneWalks++; return [scene][Symbol.iterator](); } },
+      users: { contents: [gm], activeGM: gm }, user: gm,
+      i18n: { localize: k => k, format: k => k }
+    };
+    globalThis.Actor = { updateDocuments: async u => { writes.push(u); } };
+    globalThis.ui = { notifications: { info() {}, warn() {} } };
+    await R.ready();
+    assert.equal(actorWalks, 1, "actors walked once");
+    assert.equal(sceneWalks, 1, "scenes walked once");
+    assert.equal(writes.length, 1); assert.equal(writes[0][0]._id, "a1"); assert.equal(writes[0][0]["prototypeToken.ring.enabled"], true);
+    assert.equal(tokenWrites.length, 1); assert.equal(tokenWrites[0][1][0]._id, "t1");
+    // nothing to change: still one walk, no writes
+    actorWalks = sceneWalks = 0; writes.length = 0; tokenWrites.length = 0;
+    actors[0]._source.prototypeToken = tok(true, 1, { enabled: false, scale: 1, applied: 1 }); tokens[0]._source = tok(true, 1, { enabled: false, scale: 1, applied: 1 });
+    await R.ready();
+    assert.equal(actorWalks, 1); assert.equal(writes.length + tokenWrites.length, 0);
+    // not the active GM: no walk at all
+    actorWalks = 0; globalThis.game.user = { id: "g2", isGM: true, active: true };
+    await R.ready();
+    assert.equal(actorWalks, 0);
+  } finally { Object.assign(globalThis, saved); }
+});
