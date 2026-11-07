@@ -2,6 +2,10 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## Unreleased
+
+- Under the hood: the Release workflow now has a read-only build job and a separate upload job (the only one that can write to the release), with top-level `permissions: contents: read` and every action pinned by commit SHA. Same tag check, version/URL setting and zip contents as before. No change to the module itself.
+
 ## 1.6.3 (2026-11-02)
 
 - **No more "Ringmaker: ring put on ." with nothing after it.** When Apply or Remove has nothing to change, the notice now reads "Ringmaker: nothing to change." instead of a sentence with an empty count. Remove with `confirm` skips its dialog when there is nothing to remove.
