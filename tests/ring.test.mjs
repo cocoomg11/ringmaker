@@ -89,7 +89,9 @@ test("spritesheet JSON: a ring frame and its -bkg frame side by side, matching t
 test("module.json", async () => {
   const m = await json("module.json");
   assert.equal(m.id, ID); assert.equal(m.title, "Ringmaker");
-  assert.deepEqual(m.compatibility, { minimum: "13", verified: "14" });
+  assert.equal(m.compatibility.minimum, "13");
+  assert.match(m.compatibility.verified, /^14\.\d+$/, "verified is a full build number");
+  assert.equal(m.compatibility.maximum, undefined);
   assert.equal(m.relationships?.systems, undefined, "no system restriction");
   assert.equal(m.download, `https://github.com/cocoomg11/ringmaker/releases/download/v${m.version}/module.zip`);
   assert.equal(m.manifest, "https://github.com/cocoomg11/ringmaker/releases/latest/download/module.json");

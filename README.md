@@ -16,7 +16,7 @@ Token art and actor portraits are never changed, and **Remove Ringmaker's ring**
 
 ## Requirements
 
-- Foundry VTT v13 or v14 (verified on v14).
+- Foundry VTT v13 or v14 (verified on v14 build 370).
 - Works with any game system.
 - No other modules needed.
 

@@ -2,6 +2,15 @@
 
 All notable changes to Ringmaker. Versions follow the `version` in `module.json`.
 
+## 1.6.5 (2026-11-08)
+
+- **wanderers-core 0.5.0 → 0.6.0** (via 0.5.1 and 0.5.2). The Ringmaker tools window and its confirm dialogs pick up core's stylesheet revision 4 (`wc-r4`) through `UI_CLASSES`; it differs from revision 3 by the new *heirloom* quality colour, which Ringmaker doesn't use. No other change: Ringmaker uses none of the new exports (guest pages) and no store or data-folder code. Nothing stored, no migration.
+- `compatibility.verified` is now the full build number, **14.370** (the build Ringmaker was last checked on live), instead of "14".
+- Under the hood: CI calls core's `module-checks.yml@v0.6.0` (it called `@v0.5.1` while 0.5.0 was vendored); a test now checks that the vendored core, its lock and the CI ref agree. Lint and the type check stay off (Ringmaker has no ESLint/TypeScript dev dependencies or package-lock yet).
+- Untested in Foundry:
+  - [ ] Ringmaker tools window (preview, controls, Apply / Remove confirms, footer debug switch) looks as before in the light and the dark Foundry theme.
+  - [ ] Token config's Ringmaker fields (pop-out box, art framing) look as before in both themes.
+
 ## 1.6.4 (2026-11-07)
 
 - **Faster load with "ring existing tokens on load".** The active GM's load check walked every actor and placed token twice (once to count, once more to apply). It now makes the plan once and writes it. Same result and same quiet notice; nothing else changes.

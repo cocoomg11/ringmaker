@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   checks:
-    uses: cocoomg11/wanderers-core/.github/workflows/module-checks.yml@v0.5.1
+    uses: cocoomg11/wanderers-core/.github/workflows/module-checks.yml@v0.6.0
     with:
       # Ringmaker has no ESLint or tsc setup yet (and no dev dependencies); the pin check, syntax check and tests run.
       lint: false

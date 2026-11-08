@@ -111,3 +111,20 @@ test("ringNotice: counted sentence, or 'nothing to change' when both counts are 
     assert.doesNotMatch(msg, /MISSING|\{|put on \./);
   }
 });
+
+test("1.6.5: vendored core matches its lock and CI calls the same core version", async () => {
+  const { CORE_VERSION } = await import("../vendor/wanderers-core/index.mjs");
+  const lock = JSON.parse(await read("wanderers-core.lock.json"));
+  assert.equal(CORE_VERSION, lock.version);
+  assert.match(await read(".github/workflows/test.yml"), new RegExp(`module-checks\\.yml@v${lock.version.replace(/\./g, "\\.")}\\s`));
+  assert.ok(UI_CLASSES.includes("wc-r4"));
+});
+
+test("1.6.5 version and compatibility", async () => {
+  const m = JSON.parse(await read("module.json"));
+  assert.equal(m.version, "1.6.5");
+  assert.equal(JSON.parse(await read("package.json")).version, "1.6.5");
+  assert.match(m.download, /releases\/download\/v1\.6\.5\/module\.zip$/);
+  assert.equal(m.compatibility.verified, "14.370");
+  assert.match(await read("CHANGELOG.md"), /^## 1\.6\.5 \(2026-11-08\)[\s\S]*?Untested in Foundry/m);
+});

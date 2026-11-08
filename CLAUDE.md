@@ -40,12 +40,12 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 - **Localization:** setting/menu strings are `RINGMAKER.*` keys in `lang/en.json` (declared in `module.json` `languages`; the release zip includes `lang`). `langChoices` maps choices to keys; the `TARGETS`/`TARGET_EFFECTS` English maps are no longer read by the window (1.6 uses the lang keys) but stay exported.
 
 ## 1.6 notes (wanderers-core)
-- **Core vendored** (first move): `vendor/wanderers-core/` pinned by `wanderers-core.lock.json` (0.5.0). Never edit it; update with `node vendor/wanderers-core/vendor.mjs update X.Y.Z` (behind the agent proxy: `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`), then test and commit `vendor/` with the lock. `npm run core:verify` checks it locally; CI (`test.yml`) and the Release workflow run `verify --remote`. Read core's CONVENTIONS.md and docs/ui.md, docs/windows.md.
+- **Core vendored** (first move): `vendor/wanderers-core/` pinned by `wanderers-core.lock.json` (0.5.0 in 1.6; 0.6.0 since 1.6.5). Never edit it; update with `node vendor/wanderers-core/vendor.mjs update X.Y.Z` (behind the agent proxy: `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`), then test and commit `vendor/` with the lock. `npm run core:verify` checks it locally; CI (`test.yml`) and the Release workflow run `verify --remote`. Read core's CONVENTIONS.md and docs/ui.md, docs/windows.md.
 - Only these core parts are used: `UI_CLASSES`, `esc`, `badge`, `statusLine` (pure, `menu-view.mjs`) and `RememberedWindow`, `registerWindowPlacement`, `resetPlacement` (Foundry half, `menu.mjs` / `main.mjs`). Not adopted (nothing to use them for yet): createFeatures/createSettings, leader, health, store, data folder, keybindings.
 - **Look:** module.json `styles` lists core's `wanderers-ui.css` first, then `styles/ringmaker.css`. Windows and confirm dialogs carry `WINDOW_CLASSES` (`rm-window` + `...UI_CLASSES`); never write a literal `wc-r<N>` (test). Use core's components (`wc-pagehead`, `wc-panel`, `wc-lines`/`wc-status`, `wc-stats`, `wc-alert`, `wc-chip`, `wc-btn*`) before adding CSS. A new core version with a new stylesheet revision means checking the window in both themes.
 - **Window strings** are `RINGMAKER.window.*` in `lang/en.json` (tests fail on a missing key or an unfilled `{placeholder}`); `t()` returns plain text, views `esc()` it. The token-config fields and notices are `RINGMAKER.tokenConfig.*` / `RINGMAKER.notice.*` (1.6.1).
 - **windowPlacement** (hidden client setting, core's): registered in `init`. Remove (token cleanup) doesn't touch it; the window's Reset window position button clears it (`resetPlacement(ID)`); README *Data Ringmaker writes* lists it.
-- CI (1.6.1) calls core's reusable `module-checks.yml@v0.5.1` with `lint: false, types: false` (no ESLint/tsc dev dependencies yet, and `ring.mjs` isn't JSDoc-typed); pin check, syntax check and tests run. Turn lint/types on when those exist.
+- CI calls core's reusable `module-checks.yml@v0.6.0` (since 1.6.5; keep the ref equal to the lock's version, `tests/menu.test.mjs` checks it) with `lint: false, types: false` (no ESLint/tsc dev dependencies or package-lock yet, and `ring.mjs` isn't JSDoc-typed); pin check, syntax check and tests run. Turn lint/types on when those exist.
 - Release zip: `module.json scripts styles assets lang vendor LICENSE README.md CHANGELOG.md` minus `vendor/wanderers-core/config/*`, `vendor.mjs`, `testing/*`.
 
 ## 1.6.2 notes
@@ -54,7 +54,7 @@ Foundry VTT module (v13/v14, any game system) that lets you use your own ring im
 
 ## House practices
 - **Tag format:** releases are tagged `vMAJOR.MINOR.PATCH`; the release workflow fails early on anything else.
-- **Compatibility:** `module.json` `compatibility` has `minimum` and `verified` set honestly (13 / 14). No `relationships.systems`: the module is system-agnostic.
+- **Compatibility:** `module.json` `compatibility` has `minimum` and `verified` set honestly (13 / 14.370, the newest build checked live, as a full build number). No `relationships.systems`: the module is system-agnostic.
 - **Hooks:** hot hooks (token updates, refreshes, draws) bail out on the first line for tokens or changes they don't handle. Build textures once (the ring texture is drawn once at setup) and never reload or redraw per refresh or per frame.
 - **Flags and settings:** write only under `flags.ringmaker.*` and the `ringmaker` settings namespace. Document each one in the README ("Data Ringmaker writes") and keep a way to remove it, or document how.
 - **Cross-module:** talk to other modules only through their public APIs or hooks; never reach into their internals.
